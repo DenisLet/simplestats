@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odds Entry</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        label {
+            margin-right: 5px;
+        }
+        input, select, button {
+            margin-right: 10px;
+        }
+        .group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-right: 20px;
+        }
+        .odds-input {
+            width: 60px;
+            text-align: center;
+        }
+        .suggestions {
+            max-height: 150px;
+            overflow-y: auto;
+            background: white;
+            position: absolute;
+            z-index: 1000;
+            width: 100%;
+        }
+        .suggestion-item {
+            padding: 5px;
+            cursor: pointer;
+        }
+        .suggestion-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        table {
+            margin-top: 20px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            text-align: center;
+            padding: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enter Odds Data</h1>
+<hr>
+    {% if errors %}
+        <div style="color: red;">
+            <ul>
+                {% for error in errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <form method="POST">
+        <div class="group">
+            <label for="team1">Team 1:</label>
+            <input type="text" id="team1" name="team1" autocomplete="off" value="{{ team1 }}">
+            <div id="team1-suggestions" class="suggestions"></div>
+        </div>
+
+        <div class="group">
+            <label for="team2">Team 2:</label>
+            <input type="text" id="team2" name="team2" autocomplete="off" value="{{ team2 }}">
+            <div id="team2-suggestions" class="suggestions"></div>
+        </div>
+
+        <div class="group">
+            <label>Win Home Open:</label>
+            <input type="text" class="odds-input" name="win_home_open" value="{{ request.form.get('win_home_open', '') }}" placeholder="Open" maxlength="5">
+            <input type="text" class="odds-input" name="win_home_open_plus" value="{{ request.form.get('win_home_open_plus', '') }}" placeholder="+" maxlength="5">
+            <input type="text" class="odds-input" name="win_home_open_minus" value="{{ request.form.get('win_home_open_minus', '') }}" placeholder="-" maxlength="5">
+        </div>
+
+        <div class="group">
+            <label>Win Home Close:</label>
+            <input type="text" class="odds-input" name="win_home_close" value="{{ request.form.get('win_home_close', '') }}" placeholder="Close" maxlength="5">
+            <input type="text" class="odds-input" name="win_home_close_plus" value="{{ request.form.get('win_home_close_plus', '') }}" placeholder="+" maxlength="5">
+            <input type="text" class="odds-input" name="win_home_close_minus" value="{{ request.form.get('win_home_close_minus', '') }}" placeholder="-" maxlength="5">
+        </div>
+
+        <div class="group">
+            <label>TO 2.5 Open:</label>
+            <input type="text" class="odds-input" name="to25_open" value="{{ request.form.get('to25_open', '') }}" placeholder="Open" maxlength="5">
+            <input type="text" class="odds-input" name="to25_open_plus" value="{{ request.form.get('to25_open_plus', '') }}" placeholder="+" maxlength="5">
+            <input type="text" class="odds-input" name="to25_open_minus" value="{{ request.form.get('to25_open_minus', '') }}" placeholder="-" maxlength="5">
+        </div>
+
+        <div class="group">
+            <label>TO 2.5 Close:</label>
+            <input type="text" class="odds-input" name="to25_close" value="{{ request.form.get('to25_close', '') }}" placeholder="Close" maxlength="5">
+            <input type="text" class="odds-input" name="to25_close_plus" value="{{ request.form.get('to25_close_plus', '') }}" placeholder="+" maxlength="5">
+            <input type="text" class="odds-input" name="to25_close_minus" value="{{ request.form.get('to25_close_minus', '') }}" placeholder="-" maxlength="5">
+        </div>
+
+        <div class="group">
+            <label>Bookmaker:</label>
+            <select name="bookmaker">
+                <option value="Bet365" {% if selected_bookmaker == "Bet365" %}selected{% endif %}>Bet365</option>
+                <option value="1XBet" {% if selected_bookmaker == "1XBet" %}selected{% endif %}>1XBet</option>
+            </select>
+        </div>
+
+        <div class="group">
+            <label for="last_matches">Last Matches:</label>
+            <input type="number" id="last_matches" name="last_matches" value="{{ request.form.get('last_matches', '10') }}" min="0" step="1" maxlength="3" class="odds-input">
+        </div>
+
+        <div class="group">
+            <button type="submit">Submit</button>
+        </div>
+    </form>
+<hr>
+<h2> {{ form_data.get('team1', '') }} Matches</h2>
+<div id="summary-team1"></div>
+<div id="summary-team2"></div>
+{% if matches_team1 %}
+    <table id="matches-team1">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Team 1</th>
+                <th>Team 2</th>
+                <th>Full Time</th>
+                <th>Half Time</th>
+                <th>League</th>
+                <th>Total 2.5 open</th>
+                <th>Total 2.5 close</th>
+                <th>Win Home Open</th>
+                <th>Win Home Close</th>
+                <th>Corners 1</th>
+                <th>Corners 2</th>
+                <th>YC 1</th>
+                <th>YC 2</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for match in matches_team1 %}
+            <tr data-league="{{ match.league_name }}">
+                <td>{{ match.match_date }}</td>
+                <td>{{ match.team_home }}</td>
+                <td>{{ match.team_away }}</td>
+                <td>{{ match.home_score_ft }} - {{ match.away_score_ft }}</td>
+                <td>{{ match.home_goals_h1 }} - {{ match.away_goals_h1 }}</td>
+                <td>{{ match.league_name }}</td>
+
+                {% if selected_bookmaker == '1XBet' %}
+                    <td>{{ match.xbet_odds.odds_2_5_open if match.xbet_odds else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds.odds_2_5_close if match.xbet_odds else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds.win_home_open if match.xbet_odds else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds.win_home_close if match.xbet_odds else 'Нет данных' }}</td>
+                    <td>{{ match.home_corners if match.home_corners is not none else 'Нет данных' }}</td>
+                    <td>{{ match.away_corners if match.away_corners is not none else 'Нет данных' }}</td>
+                    <td>{{ match.home_yellow if match.home_yellow is not none else 'Нет данных' }}</td>
+                    <td>{{ match.away_yellow if match.away_yellow is not none else 'Нет данных' }}</td>
+                {% elif selected_bookmaker == 'Bet365' %}
+                    <td>{{ match.bet365_odds.odds_2_5_open if match.bet365_odds else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds.odds_2_5_close if match.bet365_odds else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds.win_home_open if match.bet365_odds else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds.win_home_close if match.bet365_odds else 'Нет данных' }}</td>
+                    <td>{{ match.home_corners if match.home_corners is not none else 'Нет данных' }}</td>
+                    <td>{{ match.away_corners if match.away_corners is not none else 'Нет данных' }}</td>
+                    <td>{{ match.home_yellow if match.home_yellow is not none else 'Нет данных' }}</td>
+                    <td>{{ match.away_yellow if match.away_yellow is not none else 'Нет данных' }}</td>
+                {% else %}
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>Матчи для Команды 1 не найдены. Проверка: {{ matches_team1 }}</p>
+{% endif %}
+<h2>{{ form_data.get('team2', '') }} Matches</h2>
+{% if matches_team2 %}
+    <table id="matches-team2">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Team 1</th>
+                <th>Team 2</th>
+                <th>Full Time</th>
+                <th>Half Time</th>
+                <th>League</th>
+                <th>Total 2.5 open</th>
+                <th>Total 2.5 close</th>
+                <th>Win Home Open</th>
+                <th>Win Home Close</th>
+                <th>Corners 1</th>
+                <th>Corners 2</th>
+                <th>YC 1</th>
+                <th>YC 2</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for match in matches_team2 %}
+            <tr data-league="{{ match.league_name }}">
+                <td>{{ match.match_date }}</td>
+                <td>{{ match.team_home }}</td>
+                <td>{{ match.team_away }}</td>
+                <td>{{ match.home_score_ft }} - {{ match.away_score_ft }}</td>
+                <td>{{ match.home_goals_h1 }} - {{ match.away_goals_h1 }}</td>
+                <td>{{ match.league_name }}</td>
+
+                {% if selected_bookmaker == '1XBet' %}
+                    <td>{{ match.xbet_odds.odds_2_5_open if match.xbet_odds else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds.odds_2_5_close if match.xbet_odds else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds.win_home_open if match.xbet_odds else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds.win_home_close if match.xbet_odds else 'Нет данных' }}</td>
+                    <td>{{ match.home_corners if match.home_corners is not none else 'Нет данных' }}</td>
+                    <td>{{ match.away_corners if match.away_corners is not none else 'Нет данных' }}</td>
+                    <td>{{ match.home_yellow if match.home_yellow is not none else 'Нет данных' }}</td>
+                    <td>{{ match.away_yellow if match.away_yellow is not none else 'Нет данных' }}</td>
+                {% elif selected_bookmaker == 'Bet365' %}
+                    <td>{{ match.bet365_odds.odds_2_5_open if match.bet365_odds else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds.odds_2_5_close if match.bet365_odds else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds.win_home_open if match.bet365_odds else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds.win_home_close if match.bet365_odds else 'Нет данных' }}</td>
+                    <td>{{ match.home_corners if match.home_corners is not none else 'Нет данных' }}</td>
+                    <td>{{ match.away_corners if match.away_corners is not none else 'Нет данных' }}</td>
+                    <td>{{ match.home_yellow if match.home_yellow is not none else 'Нет данных' }}</td>
+                    <td>{{ match.away_yellow if match.away_yellow is not none else 'Нет данных' }}</td>
+                {% else %}
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>Матчи для Команды 2 не найдены. Проверка: {{ matches_team2 }}</p>
+{% endif %}
+
+
+    <script src="static/findteam.js"></script>
+
+</body>
+</html>
