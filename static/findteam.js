@@ -1,39 +1,61 @@
-function setupAutocomplete(inputId, suggestionsId, searchUrl) {
-    const input = document.getElementById(inputId);
-    const suggestions = document.getElementById(suggestionsId);
+    // Функция автозаполнения
+    function setupAutocomplete(inputId, suggestionsId, searchUrl) {
+        const input = document.getElementById(inputId);
+        const suggestions = document.getElementById(suggestionsId);
 
-    input.addEventListener("input", async () => {
-        const query = input.value.trim();
-        if (query.length < 3) {
-            suggestions.innerHTML = ""; // Очистка списка предложений
-            return;
+        async function handleInput() {
+            const query = input.value.trim();
+            if (query.length < 3) {
+                suggestions.innerHTML = ""; // Очистка списка предложений
+                return;
+            }
+
+            const response = await fetch(`${searchUrl}?q=${query}`);
+            const data = await response.json();
+
+            suggestions.innerHTML = "";
+            if (data.teams.length) {
+                data.teams.forEach(team => {
+                    const item = document.createElement("div");
+                    item.className = "suggestion-item";
+                    item.textContent = team;
+                    item.onclick = () => {
+                        input.value = team;
+                        suggestions.innerHTML = ""; // Очистка списка после выбора
+                    };
+                    suggestions.appendChild(item);
+                });
+            }
         }
 
-        const response = await fetch(`${searchUrl}?q=${query}`);
-        const data = await response.json();
+        function handleClickOutside(e) {
+            if (!suggestions.contains(e.target) && e.target !== input) {
+                suggestions.innerHTML = ""; // Очистка при клике вне списка
+            }
+        }
 
-        suggestions.innerHTML = "";
-        if (data.teams.length) {
-            data.teams.forEach(team => {
-                const item = document.createElement("div");
-                item.className = "suggestion-item";
-                item.textContent = team;
-                item.onclick = () => {
-                    input.value = team;
-                    suggestions.innerHTML = ""; // Очистка списка после выбора
-                };
-                suggestions.appendChild(item);
-            });
+        input.addEventListener("input", handleInput);
+        document.addEventListener("click", handleClickOutside);
+
+        return () => {
+            input.removeEventListener("input", handleInput);
+            document.removeEventListener("click", handleClickOutside);
+            suggestions.innerHTML = ""; // Очистка предложений при отключении
+        };
+    }
+
+    // Инициализация автозаполнения
+    let disableAutocompleteTeam1 = setupAutocomplete("team1", "team1-suggestions", "/search_teams");
+    let disableAutocompleteTeam2 = setupAutocomplete("team2", "team2-suggestions", "/search_teams");
+
+    // Управление автозаполнением через чекбокс
+    const autocompleteToggle = document.getElementById("autocomplete-toggle");
+    autocompleteToggle.addEventListener("change", (e) => {
+        if (e.target.checked) {
+            disableAutocompleteTeam1 = setupAutocomplete("team1", "team1-suggestions", "/search_teams");
+            disableAutocompleteTeam2 = setupAutocomplete("team2", "team2-suggestions", "/search_teams");
+        } else {
+            disableAutocompleteTeam1();
+            disableAutocompleteTeam2();
         }
     });
-
-    document.addEventListener("click", (e) => {
-        if (!suggestions.contains(e.target) && e.target !== input) {
-            suggestions.innerHTML = ""; // Очистка при клике вне списка
-        }
-    });
-}
-
-// Настройка автодополнения
-setupAutocomplete("team1", "team1-suggestions", "/search_teams");
-setupAutocomplete("team2", "team2-suggestions", "/search_teams");

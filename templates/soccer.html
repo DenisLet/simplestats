@@ -5,60 +5,172 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Odds Entry</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        form {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-        }
-        label {
-            margin-right: 5px;
-        }
-        input, select, button {
-            margin-right: 10px;
-        }
-        .group {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            margin-right: 20px;
-        }
-        .odds-input {
-            width: 60px;
-            text-align: center;
-        }
-        .suggestions {
-            max-height: 150px;
-            overflow-y: auto;
-            background: white;
-            position: absolute;
-            z-index: 1000;
-            width: 100%;
-        }
-        .suggestion-item {
-            padding: 5px;
-            cursor: pointer;
-        }
-        .suggestion-item:hover {
-            background-color: #f0f0f0;
-        }
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
 
-        table {
-            margin-top: 20px;
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table, th, td {
-            border: 1px solid black;
-        }
-        th, td {
-            text-align: center;
-            padding: 8px;
-        }
+form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+}
+
+label {
+    margin-right: 5px;
+}
+
+input, select, button {
+    margin-right: 10px;
+}
+
+.group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-right: 20px;
+}
+
+
+.odds-input {
+    width: 60px;
+    text-align: center;
+}
+
+.odds-input-date {
+    width: 100px;
+    text-align: center;
+}
+
+.suggestions {
+    max-height: 150px;
+    overflow-y: auto;
+    background: white;
+    position: absolute;
+    z-index: 1000;
+    width: 100%;
+}
+
+.suggestion-item {
+    padding: 5px;
+    cursor: pointer;
+}
+
+.suggestion-item:hover {
+    background-color: #f0f0f0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    text-align: left;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+th {
+    background-color: #f4f4f4;
+}
+
+/* Унифицированный стиль для блоков с отступами */
+.block {
+    margin: 20px;
+}
+
+.stat-block table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.stat-block th,
+.stat-block td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+.stat-block th {
+    background-color: #f4f4f4;
+}
+
+/* Адаптивные стили для мобильных устройств */
+@media (max-width: 768px) {
+    body {
+        margin: 10px;
+    }
+
+    .group {
+        flex-basis: 100%;
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+
+    .odds-input {
+        width: 50px;
+    }
+
+    .form-group {
+        width: 100%;
+        margin-bottom: 15px;
+    }
+
+    table {
+        margin-top: 10px;
+    }
+
+    th, td {
+        padding: 6px;
+    }
+
+    .stat-block table {
+        margin-top: 15px;
+    }
+
+    /* Уменьшаем отступы и увеличиваем доступное пространство для элементов на маленьких экранах */
+    .block {
+        margin: 10px 0;
+    }
+
+    /* Убираем лишние отступы у таблицы */
+    table {
+        font-size: 14px;
+    }
+
+    .suggestions {
+        max-height: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    .suggestion-item {
+        padding: 4px;
+    }
+
+    th, td {
+        padding: 5px;
+        font-size: 12px;
+    }
+
+    .odds-input {
+        width: 45px;
+    }
+
+    .block {
+        margin: 5px 0;
+    }
+
+    .stat-block table {
+        font-size: 12px;
+    }
+}
+
+
     </style>
 </head>
 <body>
@@ -75,6 +187,12 @@
     {% endif %}
 
     <form method="POST">
+    <div class="toggle-container">
+        <label for="autocomplete-toggle">
+            <input type="checkbox" id="autocomplete-toggle" checked>
+            Filling
+        </label>
+    </div>
         <div class="group">
             <label for="team1">Team 1:</label>
             <input type="text" id="team1" name="team1" autocomplete="off" value="{{ team1 }}">
@@ -122,10 +240,10 @@
                 <option value="1XBet" {% if selected_bookmaker == "1XBet" %}selected{% endif %}>1XBet</option>
             </select>
         </div>
-
         <div class="group">
-            <label for="last_matches">Last Matches:</label>
-            <input type="number" id="last_matches" name="last_matches" value="{{ request.form.get('last_matches', '10') }}" min="0" step="1" maxlength="3" class="odds-input">
+            <label for="from_date">From Date:</label>
+            <input type="date" id="from_date" name="from_date"
+                   value="{{ request.form.get('from_date', '2013-01-01') }}" class="odds-input-date">
         </div>
 
         <div class="group">
@@ -133,9 +251,284 @@
         </div>
     </form>
 <hr>
+<div class="statistics-section">
+
+    <!-- Голы -->
+    <div class="stat-block">
+                {% if goasl_main1 %}
+        <h3>Goals {{ form_data.get('team1', '') }}</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>League</th>
+            <th>Mathces</th>
+            <th>0.5+</th>
+            <th>1.5+</th>
+            <th>2.5+</th>
+            <th>3.5+</th>
+            <th>BTTS</th>
+            <th>ROI TO 2.5</th>
+            <th>HC -1.5</th>
+            <th>HC -0.5</th>
+            <th>HC +0.5</th>
+            <th>HC +1.5</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for league, stats in goasl_main1.items() %}
+            <tr>
+                <td>{{ league }}</td>
+                <td>{{ stats.total_matches }}</td>
+                <td>{{ stats.over_0_5 }}</td>
+                <td>{{ stats.over_1_5 }}</td>
+                <td>{{ stats.over_2_5 }}</td>
+                <td>{{ stats.over_3_5 }}</td>
+                <td>{{ stats.both_teams_scored }}</td>
+                <td>{{ stats.roi_total_2_5 }}</td>
+                <td>{{ stats.win_with_handicap_1_5 }}</td>
+                <td>{{ stats.win_with_handicap_0_5 }}</td>
+                <td>{{ stats.win_with_handicap__0_5 }}</td>
+                <td>{{ stats.win_with_handicap__1_5 }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+        {% else %}
+            <p></p>
+        {% endif %}
+    </div>
+    <!-- Голы -->
+    <div class="stat-block">
+                {% if goasl_main2 %}
+        <h3>Goals {{ form_data.get('team2', '') }}</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>League</th>
+            <th>Mathces</th>
+            <th>0.5+</th>
+            <th>1.5+</th>
+            <th>2.5+</th>
+            <th>3.5+</th>
+            <th>BTTS</th>
+            <th>ROI TO 2.5</th>
+            <th>HC -1.5</th>
+            <th>HC -0.5</th>
+            <th>HC +0.5</th>
+            <th>HC +1.5</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for league, stats in goasl_main2.items() %}
+            <tr>
+                <td>{{ league }}</td>
+                <td>{{ stats.total_matches }}</td>
+                <td>{{ stats.over_0_5 }}</td>
+                <td>{{ stats.over_1_5 }}</td>
+                <td>{{ stats.over_2_5 }}</td>
+                <td>{{ stats.over_3_5 }}</td>
+                <td>{{ stats.both_teams_scored }}</td>
+                <td>{{ stats.roi_total_2_5 }}</td>
+                <td>{{ stats.win_with_handicap_1_5 }}</td>
+                <td>{{ stats.win_with_handicap_0_5 }}</td>
+                <td>{{ stats.win_with_handicap__0_5 }}</td>
+                <td>{{ stats.win_with_handicap__1_5 }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+        {% else %}
+            <p></p>
+        {% endif %}
+    </div>
+    <!-- Угловые -->
+    <div class="stat-block">
+                {% if corners_main1 %}
+        <h3>Corners {{ form_data.get('team1', '') }}</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>League</th>
+                        <th>Matches</th>
+                        <th>6.5+</th>
+                        <th>7.5+</th>
+                        <th>8.5+</th>
+                        <th>9.5+</th>
+                        <th>10.5+</th>
+                        <th>11.5+</th>
+                        <th>HC -4.5</th>
+                        <th>HC -3.5</th>
+                        <th>HC -2.5</th>
+                        <th>HC -1.5</th>
+                        <th>HC -0.5</th>
+                        <th>HC +0.5</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for league, stats in corners_main1.items() %}
+                    <tr>
+                        <td>{{ league }}</td>
+                        <td>{{ stats.total_matches }}</td>
+                        <td>{{ stats.corners_over_6_5 }}</td>
+                        <td>{{ stats.corners_over_7_5 }}</td>
+                        <td>{{ stats.corners_over_8_5 }}</td>
+                        <td>{{ stats.corners_over_9_5 }}</td>
+                        <td>{{ stats.corners_over_10_5 }}</td>
+                        <td>{{ stats.corners_over_11_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap_4_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap_3_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap_2_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap_1_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap_0_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap__0_5 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p></p>
+        {% endif %}
+    </div>
+    <!-- Угловые -->
+    <div class="stat-block">
+                {% if corners_main2 %}
+        <h3>Corners {{ form_data.get('team2', '') }}</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>League</th>
+                        <th>Matches</th>
+                        <th>6.5+</th>
+                        <th>7.5+</th>
+                        <th>8.5+</th>
+                        <th>9.5+</th>
+                        <th>10.5+</th>
+                        <th>11.5+</th>
+                        <th>HC -4.5</th>
+                        <th>HC -3.5</th>
+                        <th>HC -2.5</th>
+                        <th>HC -1.5</th>
+                        <th>HC -0.5</th>
+                        <th>HC +0.5</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for league, stats in corners_main2.items() %}
+                    <tr>
+                        <td>{{ league }}</td>
+                        <td>{{ stats.total_matches }}</td>
+                        <td>{{ stats.corners_over_6_5 }}</td>
+                        <td>{{ stats.corners_over_7_5 }}</td>
+                        <td>{{ stats.corners_over_8_5 }}</td>
+                        <td>{{ stats.corners_over_9_5 }}</td>
+                        <td>{{ stats.corners_over_10_5 }}</td>
+                        <td>{{ stats.corners_over_11_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap_4_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap_3_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap_2_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap_1_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap_0_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap__0_5 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p></p>
+        {% endif %}
+    </div>
+    <!-- Желтые карточки -->
+    <div class="stat-block">
+                {% if yc_main1 %}
+        <h3>Yellow Cards {{ form_data.get('team1', '') }}</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>League</th>
+                        <th>Matches</th>
+                        <th>1.5+</th>
+                        <th>2.5+</th>
+                        <th>3.5+</th>
+                        <th>4.5+</th>
+                        <th>5.5+</th>
+                        <th>HC -1.5</th>
+                        <th>HC -0.5</th>
+                        <th>HC +0.5</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for league, stats in yc_main1.items() %}
+                        <tr>
+                            <td>{{ league }}</td>
+                            <td>{{ stats.total_matches }}</td>
+                            <td>{{ stats.yellow_cards_over_1_5 }}</td>
+                            <td>{{ stats.yellow_cards_over_2_5 }}</td>
+                            <td>{{ stats.yellow_cards_over_3_5 }}</td>
+                            <td>{{ stats.yellow_cards_over_4_5 }}</td>
+                            <td>{{ stats.yellow_cards_over_5_5 }}</td>
+                            <td>{{ stats.yellow_cards_win_with_handicap_minus_1_5 }}</td>
+                            <td>{{ stats.yellow_cards_win_with_handicap_minus_0_5 }}</td>
+                            <td>{{ stats.yellow_cards_win_with_handicap_minus__0_5 }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p></p>
+        {% endif %}
+    </div>
+
+
+    <!-- Желтые карточки -->
+    <div class="stat-block">
+                {% if yc_main2 %}
+        <h3>Yellow Cards {{ form_data.get('team2', '') }}</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>League</th>
+                        <th>Matches</th>
+                        <th>1.5+</th>
+                        <th>2.5+</th>
+                        <th>3.5+</th>
+                        <th>4.5+</th>
+                        <th>5.5+</th>
+                        <th>HC -1.5</th>
+                        <th>HC -0.5</th>
+                        <th>HC +0.5</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for league, stats in yc_main2.items() %}
+                        <tr>
+                            <td>{{ league }}</td>
+                            <td>{{ stats.total_matches }}</td>
+                            <td>{{ stats.yellow_cards_over_1_5 }}</td>
+                            <td>{{ stats.yellow_cards_over_2_5 }}</td>
+                            <td>{{ stats.yellow_cards_over_3_5 }}</td>
+                            <td>{{ stats.yellow_cards_over_4_5 }}</td>
+                            <td>{{ stats.yellow_cards_over_5_5 }}</td>
+                            <td>{{ stats.yellow_cards_win_with_handicap_minus_1_5 }}</td>
+                            <td>{{ stats.yellow_cards_win_with_handicap_minus_0_5 }}</td>
+                            <td>{{ stats.yellow_cards_win_with_handicap_minus__0_5 }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p></p>
+        {% endif %}
+    </div>
+</div>
+</div>
+<hr>
 <h2> {{ form_data.get('team1', '') }} Matches</h2>
-<div id="summary-team1"></div>
-<div id="summary-team2"></div>
 {% if matches_team1 %}
     <table id="matches-team1">
         <thead>
@@ -199,7 +592,7 @@
         </tbody>
     </table>
 {% else %}
-    <p>Матчи для Команды 1 не найдены. Проверка: {{ matches_team1 }}</p>
+    <p>No matches {{ matches_team1 }}</p>
 {% endif %}
 <h2>{{ form_data.get('team2', '') }} Matches</h2>
 {% if matches_team2 %}
@@ -265,11 +658,11 @@
         </tbody>
     </table>
 {% else %}
-    <p>Матчи для Команды 2 не найдены. Проверка: {{ matches_team2 }}</p>
+    <p>No matches {{ matches_team2 }}</p>
 {% endif %}
 
 
-    <script src="static/findteam.js"></script>
-
+<script src="static/findteam.js"></script>
+<script src="static/percentcount.js"></script>
 </body>
 </html>
