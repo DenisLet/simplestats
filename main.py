@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from models import Base, SoccerMain, Bet365Odds, XbetOdds, SoccerHalf1Stats, SoccerHalf2Stats, SoccerTimeLine
 from sqlalchemy.orm import joinedload, relationship
 from datetime import datetime
-
+from sqlalchemy import exists
 
 app = Flask(__name__)
 DATABASE_URL = "postgresql+psycopg2://admin:123456er@localhost:5432/statix"
@@ -29,6 +29,7 @@ def soccer():
     goasl_main2 = None
     yc_main2 = None
     form_data = {}
+    autocomplete = False
     if request.method == "POST":
         # Получение данных из формы
         selected_bookmaker = request.form.get("bookmaker")
@@ -37,7 +38,13 @@ def soccer():
         # Получение даты из формы или установка дефолтной даты
         from_date = request.form.get("from_date", "2013-01-01")
         from_date = datetime.strptime(from_date, "%Y-%m-%d")
+        autocomplete = 'autocomplete-toggle' in request.form
 
+        # Получаем значения из формы
+        team1_score = request.form.get('team1_score', '')
+        opponent_score = request.form.get('opponent_score', '')
+        team2_score = request.form.get('team2_score', '')
+        opponent2_score = request.form.get('opponent2_score', '')
         # Проверка поля "Last Matches" на число
         def validate_int(value):
             if value == "":  # Пустое значение считается валидным
@@ -124,6 +131,15 @@ def soccer():
             book_source = XbetOdds
             sub_source = SoccerMain.xbet_odds
 
+        try:
+            team1_score = int(team1_score) if team1_score else None
+            opponent_score = int(opponent_score) if opponent_score else None
+            team2_score = int(team2_score) if team2_score else None
+            opponent2_score = int(opponent2_score) if opponent2_score else None
+        except ValueError:
+            team1_score = opponent_score = team2_score = opponent2_score = None
+
+        print(team1_score, opponent_score, team2_score, opponent2_score)
 
         # Базовый запрос
         query = session.query(SoccerMain).join(
@@ -131,6 +147,7 @@ def soccer():
         ).options(joinedload(sub_source))
 
         query = query.filter(SoccerMain.match_date >= from_date, SoccerMain.match_date <= datetime.now())
+
 
         # Фильтр по командам
         if team1 and team2:
@@ -200,7 +217,6 @@ def soccer():
                 )
             )
 
-        # Сортировка по лиге и дате
         query = query.order_by(SoccerMain.league_name, desc(SoccerMain.match_date))
         matches = query.all()
 
@@ -246,14 +262,47 @@ def soccer():
             match.home_goals_h1 = home_goals_h1
             match.away_goals_h1 = away_goals_h1
 
-        # Разделение по командам
+        # Логика работы с командами
+        def filter_team_matches(team, score, opponent_score):
+            all_team_matches = [match for match in matches if match.team_home == team or match.team_away == team]
+            all_team_matches_sorted = sorted(all_team_matches, key=lambda m: m.match_date)
+
+            if score is not None and opponent_score is not None:
+                old_matches = [
+                    m for m in all_team_matches_sorted
+                    if (
+                            (m.team_home == team and m.home_score_ft == score and m.away_score_ft == opponent_score) or
+                            (m.team_away == team and m.away_score_ft == score and m.home_score_ft == opponent_score)
+                    )
+                ]
+
+                next_matches = []
+                for old_match in old_matches:
+                    future_matches_same_league = [
+                        x for x in all_team_matches_sorted
+                        if x.match_date > old_match.match_date and x.league_name == old_match.league_name
+                    ]
+                    if future_matches_same_league:
+                        next_matches.append(future_matches_same_league[0])
+
+                return next_matches
+            else:
+                return all_team_matches_sorted
+
         if team1:
-            matches_team1 = [match for match in matches if match.team_home == team1 or match.team_away == team1]
+            if team1_score and opponent_score:
+                matches_team1 = filter_team_matches(team1, team1_score, opponent_score)
+            else:
+                matches_team1 = [match for match in matches if match.team_home == team1 or match.team_away == team1]
             goasl_main1 = calculate_goals_statistics(matches_team1, selected_bookmaker)
             corners_main1 = calculate_corners_statistics(matches_team1)
             yc_main1 = calculate_yellow_cards_statistics(matches_team1)
+
         if team2:
-            matches_team2 = [match for match in matches if match.team_home == team2 or match.team_away == team2]
+            if team2_score and opponent2_score:
+                matches_team2 = filter_team_matches(team2, team2_score, opponent2_score)
+            else:
+                matches_team2 = [match for match in matches if match.team_home == team2 or match.team_away == team2]
             goasl_main2 = calculate_goals_statistics(matches_team2, selected_bookmaker)
             corners_main2 = calculate_corners_statistics(matches_team2)
             yc_main2 = calculate_yellow_cards_statistics(matches_team2)
@@ -273,7 +322,8 @@ def soccer():
         yc_main1=yc_main1,
         corners_main2=corners_main2,
         goasl_main2=goasl_main2,
-        yc_main2=yc_main2
+        yc_main2=yc_main2,
+        autocomplete=autocomplete
     )
 
 def calculate_goals_statistics(matches, selected_bookmaker):

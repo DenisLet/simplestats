@@ -170,7 +170,24 @@ th {
     }
 }
 
+.score-input {
+    display: flex;
+    justify-content: center; /* Center align the entire block */
+    align-items: center;
+}
 
+.team-score {
+    display: flex;
+    flex-direction: column; /* Stack the label and input vertically */
+    align-items: center; /* Center the label and input horizontally */
+    margin: 0 10px; /* Space between the teams */
+}
+
+.score-field {
+    width: 20px; /* Set input width to fit 2 digits */
+    text-align: center; /* Center the text inside the input */
+    margin-top: 5px; /* Space between the label and input */
+}
     </style>
 </head>
 <body>
@@ -187,11 +204,12 @@ th {
     {% endif %}
 
     <form method="POST">
-    <div class="toggle-container">
-        <label for="autocomplete-toggle">
-            <input type="checkbox" id="autocomplete-toggle" checked>
-            Filling
-        </label>
+<div class="toggle-container">
+    <label for="autocomplete-toggle">
+        <input type="checkbox" id="autocomplete-toggle" name="autocomplete-toggle" {% if autocomplete %}checked{% endif %}>
+        Filling
+    </label>
+</div>
     </div>
         <div class="group">
             <label for="team1">Team 1:</label>
@@ -245,6 +263,36 @@ th {
             <input type="date" id="from_date" name="from_date"
                    value="{{ request.form.get('from_date', '2013-01-01') }}" class="odds-input-date">
         </div>
+        <label>Previous game</label>
+<div class="group">
+
+    <div class="score-input">
+        <div class="team-score">
+            <label for="team1_score">Team 1:</label>
+            <input type="text" name="team1_score" value="{{ request.form.get('team1_score', '') }}"  maxlength="2" class="score-field">
+        </div>
+        <span> - </span>
+        <div class="team-score">
+            <label for="opponent_score">Opponent:</label>
+            <input type="text" name="opponent_score" value="{{ request.form.get('opponent_score', '') }}"  maxlength="2" class="score-field">
+        </div>
+    </div>
+</div>
+
+<div class="group">
+
+    <div class="score-input">
+        <div class="team-score">
+            <label for="team2_score">Team 2:</label>
+            <input type="text" name="team2_score" value="{{ request.form.get('team2_score', '') }}"  maxlength="2" class="score-field">
+        </div>
+        <span> - </span>
+        <div class="team-score">
+            <label for="opponent2_score">Opponent:</label>
+            <input type="text" name="opponent2_score" value="{{ request.form.get('opponent2_score', '') }}"  maxlength="2" class="score-field">
+        </div>
+    </div>
+</div>
 
         <div class="group">
             <button type="submit">Submit</button>
