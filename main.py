@@ -290,7 +290,7 @@ def soccer():
                 return all_team_matches_sorted
 
         if team1:
-            if team1_score and opponent_score:
+            if team1_score is not None and opponent_score is not None:
                 matches_team1 = filter_team_matches(team1, team1_score, opponent_score)
             else:
                 matches_team1 = [match for match in matches if match.team_home == team1 or match.team_away == team1]
@@ -299,14 +299,23 @@ def soccer():
             yc_main1 = calculate_yellow_cards_statistics(matches_team1)
 
         if team2:
-            if team2_score and opponent2_score:
+            if team2_score is not None and opponent2_score is not None:
                 matches_team2 = filter_team_matches(team2, team2_score, opponent2_score)
             else:
                 matches_team2 = [match for match in matches if match.team_home == team2 or match.team_away == team2]
             goasl_main2 = calculate_goals_statistics(matches_team2, selected_bookmaker)
             corners_main2 = calculate_corners_statistics(matches_team2)
             yc_main2 = calculate_yellow_cards_statistics(matches_team2)
-
+        # if team1:
+        #     matches_team1 = [match for match in matches if match.team_home == team1 or match.team_away == team1]
+        #     goasl_main1 = calculate_goals_statistics(matches_team1, selected_bookmaker)
+        #     corners_main1 = calculate_corners_statistics(matches_team1)
+        #     yc_main1 = calculate_yellow_cards_statistics(matches_team1)
+        # if team2:
+        #     matches_team2 = [match for match in matches if match.team_home == team2 or match.team_away == team2]
+        #     goasl_main2 = calculate_goals_statistics(matches_team2, selected_bookmaker)
+        #     corners_main2 = calculate_corners_statistics(matches_team2)
+        #     yc_main2 = calculate_yellow_cards_statistics(matches_team2)
 
     return render_template(
         "soccer.html",
