@@ -304,7 +304,8 @@ th {
     <!-- Голы -->
     <div class="stat-block">
                 {% if goasl_main1 %}
-        <h3>Goals {{ form_data.get('team1', '') }}</h3>
+
+        <h3><img src="{{ url_for('static', filename='ball_goal.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Goals {{ form_data.get('team1', '') }}</h3>
 
 <table>
     <thead>
@@ -349,7 +350,7 @@ th {
     <!-- Голы -->
     <div class="stat-block">
                 {% if goasl_main2 %}
-        <h3>Goals {{ form_data.get('team2', '') }}</h3>
+        <h3><img src="{{ url_for('static', filename='ball_goal.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Goals {{ form_data.get('team2', '') }}</h3>
 
 <table>
     <thead>
@@ -394,7 +395,7 @@ th {
     <!-- Угловые -->
     <div class="stat-block">
                 {% if corners_main1 %}
-        <h3>Corners {{ form_data.get('team1', '') }}</h3>
+        <h3><img src="{{ url_for('static', filename='corner.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Corners {{ form_data.get('team1', '') }}</h3>
 
             <table>
                 <thead>
@@ -443,7 +444,7 @@ th {
     <!-- Угловые -->
     <div class="stat-block">
                 {% if corners_main2 %}
-        <h3>Corners {{ form_data.get('team2', '') }}</h3>
+        <h3><img src="{{ url_for('static', filename='corner.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Corners {{ form_data.get('team2', '') }}</h3>
 
             <table>
                 <thead>
@@ -492,7 +493,7 @@ th {
     <!-- Желтые карточки -->
     <div class="stat-block">
                 {% if yc_main1 %}
-        <h3>Yellow Cards {{ form_data.get('team1', '') }}</h3>
+        <h3><img src="{{ url_for('static', filename='yc.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Yellow Cards {{ form_data.get('team1', '') }}</h3>
 
             <table>
                 <thead>
@@ -535,7 +536,7 @@ th {
     <!-- Желтые карточки -->
     <div class="stat-block">
                 {% if yc_main2 %}
-        <h3>Yellow Cards {{ form_data.get('team2', '') }}</h3>
+        <h3><img src="{{ url_for('static', filename='yc.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Yellow Cards {{ form_data.get('team2', '') }}</h3>
 
             <table>
                 <thead>
