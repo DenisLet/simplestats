@@ -6,8 +6,9 @@ from sqlalchemy.orm import joinedload, relationship
 from datetime import datetime
 from sqlalchemy import exists
 
+
 app = Flask(__name__)
-DATABASE_URL = "postgresql+psycopg2://admin:123456er@localhost:5432/statix"
+DATABASE_URL = "postgresql+psycopg2://admin:123456er@127.0.0.1:5432/statix"
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
