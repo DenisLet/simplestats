@@ -49,11 +49,20 @@ let disableAutocompleteTeam1;
 let disableAutocompleteTeam2;
 
 function initAutocomplete() {
+    // Получаем текущую страницу (если она soccer или hockey)
+    const currentPage = window.location.pathname;
+
+    // Устанавливаем правильный URL для поиска команд в зависимости от текущей страницы
+    let searchUrl = "/search_teams"; // По умолчанию ищем футбольные команды
+    if (currentPage.includes("hockey")) {
+        searchUrl = "/search_hockey_teams"; // Если на странице хоккей, ищем хоккейные команды
+    }
+
     // Инициализация автозаполнения только если чекбокс выбран
     const autocompleteToggle = document.getElementById("autocomplete-toggle");
     if (autocompleteToggle.checked) {
-        disableAutocompleteTeam1 = setupAutocomplete("team1", "team1-suggestions", "/search_teams");
-        disableAutocompleteTeam2 = setupAutocomplete("team2", "team2-suggestions", "/search_teams");
+        disableAutocompleteTeam1 = setupAutocomplete("team1", "team1-suggestions", searchUrl);
+        disableAutocompleteTeam2 = setupAutocomplete("team2", "team2-suggestions", searchUrl);
     }
 }
 
@@ -61,10 +70,16 @@ function initAutocomplete() {
 const autocompleteToggle = document.getElementById("autocomplete-toggle");
 
 autocompleteToggle.addEventListener("change", (e) => {
+    const currentPage = window.location.pathname;
+    let searchUrl = "/search_teams"; // По умолчанию ищем футбольные команды
+    if (currentPage.includes("hockey")) {
+        searchUrl = "/search_hockey_teams"; // Если на странице хоккей, ищем хоккейные команды
+    }
+
     if (e.target.checked) {
         // Включаем автозаполнение
-        disableAutocompleteTeam1 = setupAutocomplete("team1", "team1-suggestions", "/search_teams");
-        disableAutocompleteTeam2 = setupAutocomplete("team2", "team2-suggestions", "/search_teams");
+        disableAutocompleteTeam1 = setupAutocomplete("team1", "team1-suggestions", searchUrl);
+        disableAutocompleteTeam2 = setupAutocomplete("team2", "team2-suggestions", searchUrl);
     } else {
         // Отключаем автозаполнение
         if (disableAutocompleteTeam1) disableAutocompleteTeam1();

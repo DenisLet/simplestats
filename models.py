@@ -88,3 +88,41 @@ class SoccerTimeLine(Base):
     match_id = Column(Integer, primary_key=True)
     home_goals_h1 = Column(ARRAY(Integer))
     away_goals_h1 = Column(ARRAY(Integer))
+
+
+class HockeyMain(Base):
+    __tablename__ = 'hockey_main'
+
+    match_id = Column(Integer, primary_key=True)
+    league_id = Column(Integer)
+    match_date = Column(Date)
+    start_time = Column(Time)
+    team_home = Column(String)
+    team_away = Column(String)
+    league_name = Column(String)
+    stage = Column(String)
+    home_score_ft = Column(Integer)
+    away_score_ft = Column(Integer)
+    home_1p = Column(Integer)
+    away_1p = Column(Integer)
+    home_2p = Column(Integer)
+    away_2p = Column(Integer)
+    home_3p = Column(Integer)
+    away_3p = Column(Integer)
+    total_ft = Column(Integer)
+    final = Column(String)
+    xbet_odds_hoc = relationship('XbetOddsHoc', back_populates='hockey_main', uselist=False)
+
+class XbetOddsHoc(Base):
+    __tablename__ = 'xbet_odds_hoc'
+
+    match_id = Column(Integer, ForeignKey('hockey_main.match_id'), primary_key=True)
+    win_home_open = Column(Float)
+    win_home_close = Column(Float)
+    draw_open = Column(Float)
+    draw_close = Column(Float)
+    win_away_open = Column(Float)
+    win_away_close = Column(Float)
+    odds_5_5_open = Column(Float)
+    odds_5_5_close = Column(Float)
+    hockey_main = relationship('HockeyMain', back_populates='xbet_odds_hoc')

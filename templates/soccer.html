@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Odds Entry</title>
+    <title>Simplestats</title>
     <style>
 body {
     font-family: Arial, sans-serif;
@@ -190,9 +190,13 @@ th {
 }
     </style>
 </head>
+
 <body>
-    <h1>Enter Odds Data</h1>
-<hr>
+<h1>Enter Odds Data
+    <a href="/soccer" style="font-size: 12px; float: right; margin-left: 10px;">SOCCER</a>
+    <a href="/hockey" style="font-size: 12px; float: right;">HOCKEY</a>
+</h1>
+    <hr>
     {% if errors %}
         <div style="color: red;">
             <ul>
@@ -311,17 +315,21 @@ th {
     <thead>
         <tr>
             <th>League</th>
-            <th>Mathces</th>
+            <th>Matches</th>
             <th>0.5+</th>
             <th>1.5+</th>
             <th>2.5+</th>
             <th>3.5+</th>
             <th>BTTS</th>
             <th>ROI TO 2.5</th>
-            <th>HC -1.5</th>
-            <th>HC -0.5</th>
-            <th>HC +0.5</th>
-            <th>HC +1.5</th>
+            {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+                <th>HC -2.5</th>
+                <th>HC -1.5</th>
+                <th>HC -0.5</th>
+                <th>HC +0.5</th>
+                <th>HC +1.5</th>
+                <th>HC +2.5</th>
+            {% endif %}
         </tr>
     </thead>
     <tbody>
@@ -335,10 +343,14 @@ th {
                 <td>{{ stats.over_3_5 }}</td>
                 <td>{{ stats.both_teams_scored }}</td>
                 <td>{{ stats.roi_total_2_5 }}</td>
-                <td>{{ stats.win_with_handicap_1_5 }}</td>
-                <td>{{ stats.win_with_handicap_0_5 }}</td>
-                <td>{{ stats.win_with_handicap__0_5 }}</td>
-                <td>{{ stats.win_with_handicap__1_5 }}</td>
+                {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+                    <td>{{ stats.win_with_handicap_2_5 }}</td>
+                    <td>{{ stats.win_with_handicap_1_5 }}</td>
+                    <td>{{ stats.win_with_handicap_0_5 }}</td>
+                    <td>{{ stats.win_with_handicap__0_5 }}</td>
+                    <td>{{ stats.win_with_handicap__1_5 }}</td>
+                    <td>{{ stats.win_with_handicap__2_5 }}</td>
+                {% endif %}
             </tr>
         {% endfor %}
     </tbody>
@@ -363,10 +375,14 @@ th {
             <th>3.5+</th>
             <th>BTTS</th>
             <th>ROI TO 2.5</th>
+                        {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+            <th>HC -2.5</th>
             <th>HC -1.5</th>
             <th>HC -0.5</th>
             <th>HC +0.5</th>
             <th>HC +1.5</th>
+            <th>HC +2.5</th>
+            {% endif %}
         </tr>
     </thead>
     <tbody>
@@ -380,10 +396,14 @@ th {
                 <td>{{ stats.over_3_5 }}</td>
                 <td>{{ stats.both_teams_scored }}</td>
                 <td>{{ stats.roi_total_2_5 }}</td>
+                            {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+                <td>{{ stats.win_with_handicap_2_5 }}</td>
                 <td>{{ stats.win_with_handicap_1_5 }}</td>
                 <td>{{ stats.win_with_handicap_0_5 }}</td>
                 <td>{{ stats.win_with_handicap__0_5 }}</td>
                 <td>{{ stats.win_with_handicap__1_5 }}</td>
+                <td>{{ stats.win_with_handicap__2_5 }}</td>
+                {% endif %}
             </tr>
         {% endfor %}
     </tbody>
@@ -408,12 +428,18 @@ th {
                         <th>9.5+</th>
                         <th>10.5+</th>
                         <th>11.5+</th>
+                                                    {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
                         <th>HC -4.5</th>
                         <th>HC -3.5</th>
                         <th>HC -2.5</th>
                         <th>HC -1.5</th>
                         <th>HC -0.5</th>
                         <th>HC +0.5</th>
+                        <th>HC +1.5</th>
+                        <th>HC +2.5</th>
+                        <th>HC +3.5</th>
+                        <th>HC +4.5</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -427,12 +453,18 @@ th {
                         <td>{{ stats.corners_over_9_5 }}</td>
                         <td>{{ stats.corners_over_10_5 }}</td>
                         <td>{{ stats.corners_over_11_5 }}</td>
+                                                    {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
                         <td>{{ stats.corners_win_with_handicap_4_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_3_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_2_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_1_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_0_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap__0_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap__1_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap__2_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap__3_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap__4_5 }}</td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -457,12 +489,18 @@ th {
                         <th>9.5+</th>
                         <th>10.5+</th>
                         <th>11.5+</th>
+                                                    {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
                         <th>HC -4.5</th>
                         <th>HC -3.5</th>
                         <th>HC -2.5</th>
                         <th>HC -1.5</th>
                         <th>HC -0.5</th>
                         <th>HC +0.5</th>
+                        <th>HC +1.5</th>
+                        <th>HC +2.5</th>
+                        <th>HC +3.5</th>
+                        <th>HC +4.5</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -476,12 +514,18 @@ th {
                         <td>{{ stats.corners_over_9_5 }}</td>
                         <td>{{ stats.corners_over_10_5 }}</td>
                         <td>{{ stats.corners_over_11_5 }}</td>
+                                                    {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
                         <td>{{ stats.corners_win_with_handicap_4_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_3_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_2_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_1_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_0_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap__0_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap__1_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap__2_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap__3_5 }}</td>
+                        <td>{{ stats.corners_win_with_handicap__4_5 }}</td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -505,9 +549,12 @@ th {
                         <th>3.5+</th>
                         <th>4.5+</th>
                         <th>5.5+</th>
+                                                    {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
                         <th>HC -1.5</th>
                         <th>HC -0.5</th>
                         <th>HC +0.5</th>
+                        <th>HC +1.5</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -520,15 +567,19 @@ th {
                             <td>{{ stats.yellow_cards_over_3_5 }}</td>
                             <td>{{ stats.yellow_cards_over_4_5 }}</td>
                             <td>{{ stats.yellow_cards_over_5_5 }}</td>
+                                                        {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
                             <td>{{ stats.yellow_cards_win_with_handicap_minus_1_5 }}</td>
                             <td>{{ stats.yellow_cards_win_with_handicap_minus_0_5 }}</td>
                             <td>{{ stats.yellow_cards_win_with_handicap_minus__0_5 }}</td>
+                            <td>{{ stats.yellow_cards_win_with_handicap_minus__1_5 }}</td>
+                            {% endif %}
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         {% else %}
-            <p></p>
+            <p><img src="{{ url_for('static', filename='fon_ball.png') }}" alt="Goals Icon" style="display: block; margin: 0 auto; background-color: inherit;">
+</p>
         {% endif %}
     </div>
 
@@ -547,10 +598,13 @@ th {
                         <th>2.5+</th>
                         <th>3.5+</th>
                         <th>4.5+</th>
-                        <th>5.5+</th>
+                        <th>5.5+
+                        {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
                         <th>HC -1.5</th>
                         <th>HC -0.5</th>
                         <th>HC +0.5</th>
+                        <th>HC +1.5</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -563,9 +617,12 @@ th {
                             <td>{{ stats.yellow_cards_over_3_5 }}</td>
                             <td>{{ stats.yellow_cards_over_4_5 }}</td>
                             <td>{{ stats.yellow_cards_over_5_5 }}</td>
+                            {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
                             <td>{{ stats.yellow_cards_win_with_handicap_minus_1_5 }}</td>
                             <td>{{ stats.yellow_cards_win_with_handicap_minus_0_5 }}</td>
                             <td>{{ stats.yellow_cards_win_with_handicap_minus__0_5 }}</td>
+                            <td>{{ stats.yellow_cards_win_with_handicap_minus__1_5 }}</td>
+                            {% endif %}
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -577,8 +634,9 @@ th {
 </div>
 </div>
 <hr>
-<h2> {{ form_data.get('team1', '') }} Matches</h2>
+
 {% if matches_team1 %}
+<h2> {{ form_data.get('team1', '') }} Matches</h2>
     <table id="matches-team1">
         <thead>
             <tr>
@@ -641,10 +699,11 @@ th {
         </tbody>
     </table>
 {% else %}
-    <p>No matches {{ matches_team1 }}</p>
+    <p></p>
 {% endif %}
-<h2>{{ form_data.get('team2', '') }} Matches</h2>
+
 {% if matches_team2 %}
+<h2>{{ form_data.get('team2', '') }} Matches</h2>
     <table id="matches-team2">
         <thead>
             <tr>
@@ -707,7 +766,7 @@ th {
         </tbody>
     </table>
 {% else %}
-    <p>No matches {{ matches_team2 }}</p>
+    <p></p>
 {% endif %}
 
 

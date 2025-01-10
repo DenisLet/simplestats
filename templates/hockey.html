@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simplestats</title>
+    <style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
+
+form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+}
+
+label {
+    margin-right: 5px;
+}
+
+input, select, button {
+    margin-right: 10px;
+}
+
+.group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-right: 20px;
+}
+
+
+.odds-input {
+    width: 60px;
+    text-align: center;
+}
+
+.odds-input-date {
+    width: 100px;
+    text-align: center;
+}
+
+.suggestions {
+    max-height: 150px;
+    overflow-y: auto;
+    background: white;
+    position: absolute;
+    z-index: 1000;
+    width: 100%;
+}
+
+.suggestion-item {
+    padding: 5px;
+    cursor: pointer;
+}
+
+.suggestion-item:hover {
+    background-color: #f0f0f0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    text-align: left;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+th {
+    background-color: #f4f4f4;
+}
+
+/* Унифицированный стиль для блоков с отступами */
+.block {
+    margin: 20px;
+}
+
+.stat-block table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.stat-block th,
+.stat-block td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+.stat-block th {
+    background-color: #f4f4f4;
+}
+
+/* Адаптивные стили для мобильных устройств */
+@media (max-width: 768px) {
+    body {
+        margin: 10px;
+    }
+
+    .group {
+        flex-basis: 100%;
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+
+    .odds-input {
+        width: 50px;
+    }
+
+    .form-group {
+        width: 100%;
+        margin-bottom: 15px;
+    }
+
+    table {
+        margin-top: 10px;
+    }
+
+    th, td {
+        padding: 6px;
+    }
+
+    .stat-block table {
+        margin-top: 15px;
+    }
+
+    /* Уменьшаем отступы и увеличиваем доступное пространство для элементов на маленьких экранах */
+    .block {
+        margin: 10px 0;
+    }
+
+    /* Убираем лишние отступы у таблицы */
+    table {
+        font-size: 14px;
+    }
+
+    .suggestions {
+        max-height: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    .suggestion-item {
+        padding: 4px;
+    }
+
+    th, td {
+        padding: 5px;
+        font-size: 12px;
+    }
+
+    .odds-input {
+        width: 45px;
+    }
+
+    .block {
+        margin: 5px 0;
+    }
+
+    .stat-block table {
+        font-size: 12px;
+    }
+}
+
+.score-input {
+    display: flex;
+    justify-content: center; /* Center align the entire block */
+    align-items: center;
+}
+
+.team-score {
+    display: flex;
+    flex-direction: column; /* Stack the label and input vertically */
+    align-items: center; /* Center the label and input horizontally */
+    margin: 0 10px; /* Space between the teams */
+}
+
+.score-field {
+    width: 20px; /* Set input width to fit 2 digits */
+    text-align: center; /* Center the text inside the input */
+    margin-top: 5px; /* Space between the label and input */
+}
+    </style>
+</head>
+
+<body>
+<h1>Enter Odds Data
+    <a href="/soccer" style="font-size: 12px; float: right; margin-left: 10px;">SOCCER</a>
+    <a href="/hockey" style="font-size: 12px; float: right;">HOCKEY</a>
+</h1>
+    <hr>
+    {% if errors %}
+        <div style="color: red;">
+            <ul>
+                {% for error in errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <form method="POST">
+<div class="toggle-container">
+    <label for="autocomplete-toggle">
+        <input type="checkbox" id="autocomplete-toggle" name="autocomplete-toggle" {% if autocomplete %}checked{% endif %}>
+        Filling
+    </label>
+</div>
+    </div>
+        <div class="group">
+            <label for="team1">Team 1:</label>
+            <input type="text" id="team1" name="team1" autocomplete="off" value="{{ team1 }}">
+            <div id="team1-suggestions" class="suggestions"></div>
+        </div>
+
+        <div class="group">
+            <label for="team2">Team 2:</label>
+            <input type="text" id="team2" name="team2" autocomplete="off" value="{{ team2 }}">
+            <div id="team2-suggestions" class="suggestions"></div>
+        </div>
+
+        <div class="group">
+            <label>Win Home Open:</label>
+            <input type="text" class="odds-input" name="win_home_open" value="{{ request.form.get('win_home_open', '') }}" placeholder="Open" maxlength="5">
+            <input type="text" class="odds-input" name="win_home_open_plus" value="{{ request.form.get('win_home_open_plus', '') }}" placeholder="+" maxlength="5">
+            <input type="text" class="odds-input" name="win_home_open_minus" value="{{ request.form.get('win_home_open_minus', '') }}" placeholder="-" maxlength="5">
+        </div>
+
+        <div class="group">
+            <label>Win Home Close:</label>
+            <input type="text" class="odds-input" name="win_home_close" value="{{ request.form.get('win_home_close', '') }}" placeholder="Close" maxlength="5">
+            <input type="text" class="odds-input" name="win_home_close_plus" value="{{ request.form.get('win_home_close_plus', '') }}" placeholder="+" maxlength="5">
+            <input type="text" class="odds-input" name="win_home_close_minus" value="{{ request.form.get('win_home_close_minus', '') }}" placeholder="-" maxlength="5">
+        </div>
+
+        <div class="group">
+            <label>TO 2.5 Open:</label>
+            <input type="text" class="odds-input" name="to25_open" value="{{ request.form.get('to25_open', '') }}" placeholder="Open" maxlength="5">
+            <input type="text" class="odds-input" name="to25_open_plus" value="{{ request.form.get('to25_open_plus', '') }}" placeholder="+" maxlength="5">
+            <input type="text" class="odds-input" name="to25_open_minus" value="{{ request.form.get('to25_open_minus', '') }}" placeholder="-" maxlength="5">
+        </div>
+
+        <div class="group">
+            <label>TO 2.5 Close:</label>
+            <input type="text" class="odds-input" name="to25_close" value="{{ request.form.get('to25_close', '') }}" placeholder="Close" maxlength="5">
+            <input type="text" class="odds-input" name="to25_close_plus" value="{{ request.form.get('to25_close_plus', '') }}" placeholder="+" maxlength="5">
+            <input type="text" class="odds-input" name="to25_close_minus" value="{{ request.form.get('to25_close_minus', '') }}" placeholder="-" maxlength="5">
+        </div>
+
+        <div class="group">
+            <label>Bookmaker:</label>
+            <select name="bookmaker">
+                <option value="1XBet">1XBet</option>
+            </select>
+        </div>
+        <div class="group">
+            <label for="from_date">From Date:</label>
+            <input type="date" id="from_date" name="from_date"
+                   value="{{ request.form.get('from_date', '2013-01-01') }}" class="odds-input-date">
+        </div>
+        <label>Previous game</label>
+<div class="group">
+
+    <div class="score-input">
+        <div class="team-score">
+            <label for="team1_score">Team 1:</label>
+            <input type="text" name="team1_score" value="{{ request.form.get('team1_score', '') }}"  maxlength="2" class="score-field">
+        </div>
+        <span> - </span>
+        <div class="team-score">
+            <label for="opponent_score">Opponent:</label>
+            <input type="text" name="opponent_score" value="{{ request.form.get('opponent_score', '') }}"  maxlength="2" class="score-field">
+        </div>
+    </div>
+</div>
+
+<div class="group">
+
+    <div class="score-input">
+        <div class="team-score">
+            <label for="team2_score">Team 2:</label>
+            <input type="text" name="team2_score" value="{{ request.form.get('team2_score', '') }}"  maxlength="2" class="score-field">
+        </div>
+        <span> - </span>
+        <div class="team-score">
+            <label for="opponent2_score">Opponent:</label>
+            <input type="text" name="opponent2_score" value="{{ request.form.get('opponent2_score', '') }}"  maxlength="2" class="score-field">
+        </div>
+    </div>
+</div>
+
+        <div class="group">
+            <button type="submit">Submit</button>
+        </div>
+    </form>
+<hr>
+<div class="statistics-section">
+
+    <!-- Голы -->
+    <div class="stat-block">
+                {% if goasl_main1 %}
+
+        <h3><img src="{{ url_for('static', filename='shajba.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Goals {{ form_data.get('team1', '') }}</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>League</th>
+            <th>Matches</th>
+            <th>0.5+</th>
+            <th>1.5+</th>
+            <th>2.5+</th>
+            <th>3.5+</th>
+            <th>4.5+</th>
+            <th>5.5+</th>
+            <th>6.5+</th>
+            <th>7.5+</th>
+            <th>8.5+</th>
+            <th>9.5+</th>
+            <th>10.5+</th>
+            <th>ROI TO 5.5</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for league, stats in goasl_main1.items() %}
+            <tr>
+                <td>{{ league }}</td>
+                <td>{{ stats.total_matches }}</td>
+                <td>{{ stats.over_0_5 }}</td>
+                <td>{{ stats.over_1_5 }}</td>
+                <td>{{ stats.over_2_5 }}</td>
+                <td>{{ stats.over_3_5 }}</td>
+                <td>{{ stats.over_4_5 }}</td>
+                <td>{{ stats.over_5_5 }}</td>
+                <td>{{ stats.over_6_5 }}</td>
+                <td>{{ stats.over_7_5 }}</td>
+                <td>{{ stats.over_8_5 }}</td>
+                <td>{{ stats.over_9_5 }}</td>
+                <td>{{ stats.over_10_5 }}</td>
+                <td>{{ stats.roi_total_5_5 }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+        {% else %}
+            <p></p>
+        {% endif %}
+    </div>
+    <!-- Голы -->
+    <div class="stat-block">
+                {% if goasl_main2 %}
+        <h3><img src="{{ url_for('static', filename='shajba.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Goals {{ form_data.get('team2', '') }}</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>League</th>
+            <th>Matches</th>
+            <th>0.5+</th>
+            <th>1.5+</th>
+            <th>2.5+</th>
+            <th>3.5+</th>
+            <th>4.5+</th>
+            <th>5.5+</th>
+            <th>6.5+</th>
+            <th>7.5+</th>
+            <th>8.5+</th>
+            <th>9.5+</th>
+            <th>10.5+</th>
+            <th>ROI TO 5.5</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for league, stats in goasl_main2.items() %}
+            <tr>
+                <td>{{ league }}</td>
+                <td>{{ stats.total_matches }}</td>
+                <td>{{ stats.over_0_5 }}</td>
+                <td>{{ stats.over_1_5 }}</td>
+                <td>{{ stats.over_2_5 }}</td>
+                <td>{{ stats.over_3_5 }}</td>
+                <td>{{ stats.over_4_5 }}</td>
+                <td>{{ stats.over_5_5 }}</td>
+                <td>{{ stats.over_6_5 }}</td>
+                <td>{{ stats.over_7_5 }}</td>
+                <td>{{ stats.over_8_5 }}</td>
+                <td>{{ stats.over_9_5 }}</td>
+                <td>{{ stats.over_10_5 }}</td>
+                <td>{{ stats.roi_total_5_5 }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+        {% else %}
+            <p></p>
+        {% endif %}
+    </div>
+</div>
+<div class="stat-block">
+    {% if hc_team1 %}
+        <h3><img src="{{ url_for('static', filename='plusminus.png') }}" alt="Handicap Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Handicap {{ form_data.get('team1', '') }}</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>League</th>
+                    <th>Matches</th>
+                    <th>-5.5</th>
+                    <th>-4.5</th>
+                    <th>-3.5</th>
+                    <th>-2.5</th>
+                    <th>-1.5</th>
+                    <th>-0.5</th>
+                    <th>+0.5</th>
+                    <th>+1.5</th>
+                    <th>+2.5</th>
+                    <th>+3.5</th>
+                    <th>+4.5</th>
+                    <th>+5.5</th>
+                    <th>ROI WIN</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for league, stats in hc_team1.items() %}
+                    <tr>
+                        <td>{{ league }}</td>
+                        <td>{{ stats.total_matches }}</td>
+                        <td>{{ stats.handicap__5_5 }}</td>
+                        <td>{{ stats.handicap__4_5 }}</td>
+                        <td>{{ stats.handicap__3_5 }}</td>
+                        <td>{{ stats.handicap__2_5 }}</td>
+                        <td>{{ stats.handicap__1_5 }}</td>
+                        <td>{{ stats.handicap__0_5 }}</td>
+                        <td>{{ stats.handicap_0_5 }}</td>
+                        <td>{{ stats.handicap_1_5 }}</td>
+                        <td>{{ stats.handicap_2_5 }}</td>
+                        <td>{{ stats.handicap_3_5 }}</td>
+                        <td>{{ stats.handicap_4_5 }}</td>
+                        <td>{{ stats.handicap_5_5 }}</td>
+                        <td>{{ stats.roi_win }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+<div class="stat-block">
+    {% if hc_team2 %}
+        <h3><img src="{{ url_for('static', filename='plusminus.png') }}" alt="Handicap Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Handicap {{ form_data.get('team2', '') }}</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>League</th>
+                    <th>Matches</th>
+                    <th>-5.5</th>
+                    <th>-4.5</th>
+                    <th>-3.5</th>
+                    <th>-2.5</th>
+                    <th>-1.5</th>
+                    <th>-0.5</th>
+                    <th>+0.5</th>
+                    <th>+1.5</th>
+                    <th>+2.5</th>
+                    <th>+3.5</th>
+                    <th>+4.5</th>
+                    <th>+5.5</th>
+                    <th>ROI WIN</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for league, stats in hc_team2.items() %}
+                    <tr>
+                        <td>{{ league }}</td>
+                        <td>{{ stats.total_matches }}</td>
+                        <td>{{ stats.handicap__5_5 }}</td>
+                        <td>{{ stats.handicap__4_5 }}</td>
+                        <td>{{ stats.handicap__3_5 }}</td>
+                        <td>{{ stats.handicap__2_5 }}</td>
+                        <td>{{ stats.handicap__1_5 }}</td>
+                        <td>{{ stats.handicap__0_5 }}</td>
+                        <td>{{ stats.handicap_0_5 }}</td>
+                        <td>{{ stats.handicap_1_5 }}</td>
+                        <td>{{ stats.handicap_2_5 }}</td>
+                        <td>{{ stats.handicap_3_5 }}</td>
+                        <td>{{ stats.handicap_4_5 }}</td>
+                        <td>{{ stats.handicap_5_5 }}</td>
+                        <td>{{ stats.roi_win }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+<hr>
+
+{% if matches_team1 %}
+<h2> {{ form_data.get('team1', '') }} Matches</h2>
+    <table id="matches-team1">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Team 1</th>
+                <th>Team 2</th>
+                <th>Full Time</th>
+                <th>1 Period</th>
+                <th>2 Period</th>
+                <th>League</th>
+                <th>Total 5.5 open</th>
+                <th>Total 5.5 close</th>
+                <th>Win Home Open</th>
+                <th>Win Home Close</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for match in matches_team1 %}
+            <tr data-league="{{ match.league_name }}">
+                <td>{{ match.match_date }}</td>
+                <td>{{ match.team_home }}</td>
+                <td>{{ match.team_away }}</td>
+                <td>{{ match.home_score_ft }} - {{ match.away_score_ft }}</td>
+                <td>{{ match.home_goals_h1 }} - {{ match.away_goals_h1 }}</td>
+                <td>{{ match.home_goals_h1 }} - {{ match.away_goals_h1 }}</td>
+                <td>{{ match.league_name }}</td>
+
+                {% if selected_bookmaker == '1XBet' %}
+                    <td>{{ match.xbet_odds_hoc.odds_5_5_open if match.xbet_odds_hoc else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_hoc.odds_5_5_close if match.xbet_odds_hoc else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_hoc.win_home_open if match.xbet_odds_hoc else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_hoc.win_home_close if match.xbet_odds_hoc else 'Нет данных' }}</td>
+                {% else %}
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+   <p><img src="{{ url_for('static', filename='shajba.png') }}" alt="Goals Icon" style="display: block; margin: 0 auto; background-color: inherit;">
+{% endif %}
+
+{% if matches_team2 %}
+<h2>{{ form_data.get('team2', '') }} Matches</h2>
+    <table id="matches-team2">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Team 1</th>
+                <th>Team 2</th>
+                <th>Full Time</th>
+                <th>1 Period</th>
+                <th>2 Period</th>
+                <th>League</th>
+                <th>Total 5.5 open</th>
+                <th>Total 5.5 close</th>
+                <th>Win Home Open</th>
+                <th>Win Home Close</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for match in matches_team2 %}
+            <tr data-league="{{ match.league_name }}">
+                <td>{{ match.match_date }}</td>
+                <td>{{ match.team_home }}</td>
+                <td>{{ match.team_away }}</td>
+                <td>{{ match.home_score_ft }} - {{ match.away_score_ft }}</td>
+                <td>{{ match.home_goals_h1 }} - {{ match.away_goals_h1 }}</td>
+                <td>{{ match.home_goals_h1 }} - {{ match.away_goals_h1 }}</td>
+                <td>{{ match.league_name }}</td>
+
+                {% if selected_bookmaker == '1XBet' %}
+                    <td>{{ match.xbet_odds_hoc.odds_5_5_open if match.xbet_odds_hoc else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_hoc.odds_5_5_close if match.xbet_odds_hoc else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_hoc.win_home_open if match.xbet_odds_hoc else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_hoc.win_home_close if match.xbet_odds_hoc else 'Нет данных' }}</td>
+
+                {% else %}
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                    <td>Выберите букмекера</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p></p>
+{% endif %}
+
+
+<script src="static/findteam.js"></script>
+<script src="static/percentcount.js"></script>
+</body>
+</html>
