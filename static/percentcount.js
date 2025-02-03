@@ -15,6 +15,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     const cell = row.cells[i];
                     const header = table.querySelector(`thead tr th:nth-child(${i + 1})`);
 
+                    // Пропускаем ячейки с классами "max-ft" и "min-ft"
+                    if (cell.classList.contains('max-ft') || cell.classList.contains('min-ft')) {
+                        continue;
+                    }
+
                     // Пропускаем ROI
                     if (header && header.textContent.includes("ROI")) {
                         continue;

@@ -126,3 +126,40 @@ class XbetOddsHoc(Base):
     odds_5_5_open = Column(Float)
     odds_5_5_close = Column(Float)
     hockey_main = relationship('HockeyMain', back_populates='xbet_odds_hoc')
+
+
+class HandballMain(Base):
+    __tablename__ = 'hb_main'
+
+    match_id = Column(Integer, primary_key=True)
+    league_id = Column(Integer)
+    match_date = Column(Date)
+    start_time = Column(Time)
+    team_home = Column(String)
+    team_away = Column(String)
+    league_name = Column(String)
+    stage = Column(String)
+    home_score_ft = Column(Integer)
+    away_score_ft = Column(Integer)
+    home_1h = Column(Integer)
+    away_1h = Column(Integer)
+    home_2h = Column(Integer)
+    away_2h = Column(Integer)
+    total_ft = Column(Integer)
+    final = Column(String)
+    xbet_odds_hb = relationship('XbetOddsHb', back_populates='hb_main', uselist=False)
+
+class XbetOddsHb(Base):
+    __tablename__ = 'xbet_odds_hb'
+
+    match_id = Column(Integer, ForeignKey('hb_main.match_id'), primary_key=True)
+    win_home_open = Column(Float)
+    win_home_close = Column(Float)
+    draw_open = Column(Float)
+    draw_close = Column(Float)
+    win_away_open = Column(Float)
+    win_away_close = Column(Float)
+    total_odds_open = Column(Float)
+    total_odds_close = Column(Float)
+    total_value = Column(Integer)
+    hb_main = relationship('HandballMain', back_populates='xbet_odds_hb')

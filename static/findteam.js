@@ -57,6 +57,9 @@ function initAutocomplete() {
     if (currentPage.includes("hockey")) {
         searchUrl = "/search_hockey_teams"; // Если на странице хоккей, ищем хоккейные команды
     }
+    if (currentPage.includes("handball")) {
+        searchUrl = "/search_handball_teams"; // Если на странице хоккей, ищем хоккейные команды
+    }
 
     // Инициализация автозаполнения только если чекбокс выбран
     const autocompleteToggle = document.getElementById("autocomplete-toggle");
@@ -74,6 +77,9 @@ autocompleteToggle.addEventListener("change", (e) => {
     let searchUrl = "/search_teams"; // По умолчанию ищем футбольные команды
     if (currentPage.includes("hockey")) {
         searchUrl = "/search_hockey_teams"; // Если на странице хоккей, ищем хоккейные команды
+    }
+    if (currentPage.includes("handball")) {
+        searchUrl = "/search_handball_teams"; // Если на странице гандбол, ищем гандбольные команды
     }
 
     if (e.target.checked) {

@@ -5,10 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simplestats</title>
     <style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-}
+        @font-face {
+            font-family: 'MOSCOW2024';
+            src: url('static/fonts/MOSCOW2024.otf') format('opentype');
+        }
+
+        body {
+            font-family: 'MOSCOW2024', Arial, sans-serif;
+            margin: 20px;
+        }
+
+        input, textarea, select, button {
+            font-family: 'MOSCOW2024', Arial, sans-serif;
+        }
 
 form {
     display: flex;
@@ -32,7 +41,6 @@ input, select, button {
     align-items: flex-start;
     margin-right: 20px;
 }
-
 
 .odds-input {
     width: 60px;
@@ -99,77 +107,6 @@ th {
     background-color: #f4f4f4;
 }
 
-/* Адаптивные стили для мобильных устройств */
-@media (max-width: 768px) {
-    body {
-        margin: 10px;
-    }
-
-    .group {
-        flex-basis: 100%;
-        margin-right: 0;
-        margin-bottom: 10px;
-    }
-
-    .odds-input {
-        width: 50px;
-    }
-
-    .form-group {
-        width: 100%;
-        margin-bottom: 15px;
-    }
-
-    table {
-        margin-top: 10px;
-    }
-
-    th, td {
-        padding: 6px;
-    }
-
-    .stat-block table {
-        margin-top: 15px;
-    }
-
-    /* Уменьшаем отступы и увеличиваем доступное пространство для элементов на маленьких экранах */
-    .block {
-        margin: 10px 0;
-    }
-
-    /* Убираем лишние отступы у таблицы */
-    table {
-        font-size: 14px;
-    }
-
-    .suggestions {
-        max-height: 100px;
-    }
-}
-
-@media (max-width: 480px) {
-    .suggestion-item {
-        padding: 4px;
-    }
-
-    th, td {
-        padding: 5px;
-        font-size: 12px;
-    }
-
-    .odds-input {
-        width: 45px;
-    }
-
-    .block {
-        margin: 5px 0;
-    }
-
-    .stat-block table {
-        font-size: 12px;
-    }
-}
-
 .score-input {
     display: flex;
     justify-content: center; /* Center align the entire block */
@@ -188,14 +125,63 @@ th {
     text-align: center; /* Center the text inside the input */
     margin-top: 5px; /* Space between the label and input */
 }
+@media (max-width: 768px) {
+    .group {
+        display: flex;
+        flex-wrap: nowrap;  /* Принудительно не переносить элементы на следующую строку */
+        justify-content: space-between; /* Распределяем элементы по строке */
+        width: 100%;
+    }
+
+    .odds-input {
+        width: 22%;  /* Уменьшаем ширину инпутов для того, чтобы все поместились */
+        text-align: center;
+    }
+
+    .group label {
+        width: 100%; /* Лейблы остаются сверху */
+    }
+
+    /* Дополнительная настройка для каждого блока */
+    .group:nth-child(3), .group:nth-child(4) {
+        display: flex;
+        justify-content: space-between;
+    }
+}
+    .nav-link {
+        font-size: 12px;
+        margin-right: 10px;
+    }
     </style>
 </head>
 
 <body>
-<h1>Enter Odds Data
-    <a href="/soccer" style="font-size: 12px; float: right; margin-left: 10px;">SOCCER</a>
-    <a href="/hockey" style="font-size: 12px; float: right;">HOCKEY</a>
+<h1 style="display: flex; align-items: center;">
+    Enter Odds Data
+    <span style="margin-left: 20px;">
+        <span id="percentage-display" style="display: inline-block; width: 55px; text-align: right; font-size: 20px;">50.0%</span>
+    </span>
+    <input type="range" id="odds-slider" min="0" max="100" value="50" step="0.5" style="margin: 0 10px; width: 360px;" oninput="updateOdds(this.value)">
+    <span style="margin-left: 5px;">
+        <span id="odds-display" style="display: inline-block; width: auto; text-align: left; font-size: 20px;">2.00</span>
+    </span>
+<div style="display: flex; justify-content: flex-end; margin: 0; padding: 0; width: 100%; position: absolute; top: 0; right: 10px;">
+    <a href="/soccer" style="font-size: 12px; margin-right: 10px;">SOCCER</a>
+    <a href="/hockey" style="font-size: 12px; margin-right: 10px;">HOCKEY</a>
+    <a href="/handball" style="font-size: 12px;">HANDBALL</a>
+</div>
+
+
 </h1>
+
+<script>
+    function updateOdds(probability) {
+        let formattedProbability = parseFloat(probability).toFixed(1);
+        let odds = (100 / probability).toFixed(2);
+        document.getElementById('percentage-display').textContent = formattedProbability + '%';
+        document.getElementById('odds-display').textContent = odds;
+    }
+</script>
     <hr>
     {% if errors %}
         <div style="color: red;">
@@ -242,14 +228,14 @@ th {
         </div>
 
         <div class="group">
-            <label>TO 2.5 Open:</label>
+            <label>TO 5.5 Open:</label>
             <input type="text" class="odds-input" name="to25_open" value="{{ request.form.get('to25_open', '') }}" placeholder="Open" maxlength="5">
             <input type="text" class="odds-input" name="to25_open_plus" value="{{ request.form.get('to25_open_plus', '') }}" placeholder="+" maxlength="5">
             <input type="text" class="odds-input" name="to25_open_minus" value="{{ request.form.get('to25_open_minus', '') }}" placeholder="-" maxlength="5">
         </div>
 
         <div class="group">
-            <label>TO 2.5 Close:</label>
+            <label>TO 5.5 Close:</label>
             <input type="text" class="odds-input" name="to25_close" value="{{ request.form.get('to25_close', '') }}" placeholder="Close" maxlength="5">
             <input type="text" class="odds-input" name="to25_close_plus" value="{{ request.form.get('to25_close_plus', '') }}" placeholder="+" maxlength="5">
             <input type="text" class="odds-input" name="to25_close_minus" value="{{ request.form.get('to25_close_minus', '') }}" placeholder="-" maxlength="5">
@@ -501,6 +487,22 @@ th {
     {% endif %}
 </div>
 <hr>
+<div id="team-stats" {% if form_data.get('team1') or form_data.get('team2') %}>
+    <p>
+        <strong>{{ form_data.get('team1', '') }}</strong> 1 Period Over 0.5: <span id="team1-over-0-5"></span>%,
+        1 Period Over 1.5: <span id="team1-over-1-5"></span>% |
+        <strong>{{ form_data.get('team2', '') }}</strong> 1 Period Over 0.5: <span id="team2-over-0-5"></span>%,
+        1 Period Over 1.5: <span id="team2-over-1-5"></span>%
+    </p>
+        {% endif %}
+</div>
+
+<div>
+    <label for="ht-score-filter">1 Period Score Filter:</label>
+    <input type="text" id="ht-score-filter" placeholder="0-0" maxlength="5" style="width: 5ch;">
+    <button onclick="filterByHalfTimeScore()">Filter</button>
+</div>
+<div id="stats-container"></div>
 
 {% if matches_team1 %}
 <h2> {{ form_data.get('team1', '') }} Matches</h2>
@@ -510,7 +512,7 @@ th {
                 <th>Date</th>
                 <th>Team 1</th>
                 <th>Team 2</th>
-                <th>Full Time</th>
+                <th>Reg. Time</th>
                 <th>1 Period</th>
                 <th>2 Period</th>
                 <th>League</th>
@@ -527,8 +529,8 @@ th {
                 <td>{{ match.team_home }}</td>
                 <td>{{ match.team_away }}</td>
                 <td>{{ match.home_score_ft }} - {{ match.away_score_ft }}</td>
-                <td>{{ match.home_goals_h1 }} - {{ match.away_goals_h1 }}</td>
-                <td>{{ match.home_goals_h1 }} - {{ match.away_goals_h1 }}</td>
+                <td>{{ match.home_1p }} - {{ match.away_1p }}</td>
+                <td>{{ match.home_2p }} - {{ match.away_2p }}</td>
                 <td>{{ match.league_name }}</td>
 
                 {% if selected_bookmaker == '1XBet' %}
@@ -547,7 +549,10 @@ th {
         </tbody>
     </table>
 {% else %}
-   <p><img src="{{ url_for('static', filename='shajba.png') }}" alt="Goals Icon" style="display: block; margin: 0 auto; background-color: inherit;">
+<p>
+    <img src="{{ url_for('static', filename='shajba.png') }}" alt="Goals Icon"
+         style="display: block; margin: 0 auto; background-color: inherit; max-width: 100px; width: 100%; height: auto;">
+</p>
 {% endif %}
 
 {% if matches_team2 %}
@@ -558,7 +563,7 @@ th {
                 <th>Date</th>
                 <th>Team 1</th>
                 <th>Team 2</th>
-                <th>Full Time</th>
+                <th>Reg. Time</th>
                 <th>1 Period</th>
                 <th>2 Period</th>
                 <th>League</th>
@@ -575,8 +580,8 @@ th {
                 <td>{{ match.team_home }}</td>
                 <td>{{ match.team_away }}</td>
                 <td>{{ match.home_score_ft }} - {{ match.away_score_ft }}</td>
-                <td>{{ match.home_goals_h1 }} - {{ match.away_goals_h1 }}</td>
-                <td>{{ match.home_goals_h1 }} - {{ match.away_goals_h1 }}</td>
+                <td>{{ match.home_1p }} - {{ match.away_1p }}</td>
+                <td>{{ match.home_2p }} - {{ match.away_2p }}</td>
                 <td>{{ match.league_name }}</td>
 
                 {% if selected_bookmaker == '1XBet' %}
@@ -606,5 +611,13 @@ th {
 
 <script src="static/findteam.js"></script>
 <script src="static/percentcount.js"></script>
+<script src="static/firsthalfcount.js"></script>
+<script src="static/firsthalffilter.js"></script>
+
+<script>
+
+</script>
+
+
 </body>
 </html>

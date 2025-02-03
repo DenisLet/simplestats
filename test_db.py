@@ -26,3 +26,20 @@ class TestDatabaseConnection(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def calculate_commissions(amount, total, rates):
+    return {trade_type: rate * (amount if "buy" in trade_type else total) for trade_type, rate in rates.items()}
+amount = 1000
+total = 5000
+rates = {
+    "market_buy": 0.001,
+    "market_sell": 0.002,
+    "limit_buy": 0.0015,
+    "limit_sell": 0.0025,
+    "stop_limit_buy": 0.002,
+    "stop_limit_sell": 0.003
+}
+print(calculate_commissions(amount,total,rates))
+
+

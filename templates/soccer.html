@@ -5,11 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simplestats</title>
     <style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-}
+        @font-face {
+            font-family: 'MOSCOW2024';
+            src: url('static/fonts/MOSCOW2024.otf') format('opentype');
+        }
 
+        body {
+            font-family: 'MOSCOW2024', Arial, sans-serif;
+            margin: 20px;
+        }
+
+        input, textarea, select, button {
+            font-family: 'MOSCOW2024', Arial, sans-serif;
+        }
 form {
     display: flex;
     flex-wrap: wrap;
@@ -32,7 +40,6 @@ input, select, button {
     align-items: flex-start;
     margin-right: 20px;
 }
-
 
 .odds-input {
     width: 60px;
@@ -99,77 +106,6 @@ th {
     background-color: #f4f4f4;
 }
 
-/* Адаптивные стили для мобильных устройств */
-@media (max-width: 768px) {
-    body {
-        margin: 10px;
-    }
-
-    .group {
-        flex-basis: 100%;
-        margin-right: 0;
-        margin-bottom: 10px;
-    }
-
-    .odds-input {
-        width: 50px;
-    }
-
-    .form-group {
-        width: 100%;
-        margin-bottom: 15px;
-    }
-
-    table {
-        margin-top: 10px;
-    }
-
-    th, td {
-        padding: 6px;
-    }
-
-    .stat-block table {
-        margin-top: 15px;
-    }
-
-    /* Уменьшаем отступы и увеличиваем доступное пространство для элементов на маленьких экранах */
-    .block {
-        margin: 10px 0;
-    }
-
-    /* Убираем лишние отступы у таблицы */
-    table {
-        font-size: 14px;
-    }
-
-    .suggestions {
-        max-height: 100px;
-    }
-}
-
-@media (max-width: 480px) {
-    .suggestion-item {
-        padding: 4px;
-    }
-
-    th, td {
-        padding: 5px;
-        font-size: 12px;
-    }
-
-    .odds-input {
-        width: 45px;
-    }
-
-    .block {
-        margin: 5px 0;
-    }
-
-    .stat-block table {
-        font-size: 12px;
-    }
-}
-
 .score-input {
     display: flex;
     justify-content: center; /* Center align the entire block */
@@ -188,14 +124,58 @@ th {
     text-align: center; /* Center the text inside the input */
     margin-top: 5px; /* Space between the label and input */
 }
+@media (max-width: 768px) {
+    .group {
+        display: flex;
+        flex-wrap: nowrap;  /* Принудительно не переносить элементы на следующую строку */
+        justify-content: space-between; /* Распределяем элементы по строке */
+        width: 100%;
+    }
+
+    .odds-input {
+        width: 22%;  /* Уменьшаем ширину инпутов для того, чтобы все поместились */
+        text-align: center;
+    }
+
+    .group label {
+        width: 100%; /* Лейблы остаются сверху */
+    }
+
+    /* Дополнительная настройка для каждого блока */
+    .group:nth-child(3), .group:nth-child(4) {
+        display: flex;
+        justify-content: space-between;
+    }
+}
+
     </style>
 </head>
 
 <body>
-<h1>Enter Odds Data
-    <a href="/soccer" style="font-size: 12px; float: right; margin-left: 10px;">SOCCER</a>
-    <a href="/hockey" style="font-size: 12px; float: right;">HOCKEY</a>
+<h1 style="display: flex; align-items: center;">
+    Enter Odds Data
+    <span style="margin-left: 20px;">
+        <span id="percentage-display" style="display: inline-block; width: 55px; text-align: right; font-size: 20px;">50.0%</span>
+    </span>
+    <input type="range" id="odds-slider" min="0" max="100" value="50" step="0.5" style="margin: 0 10px; width: 360px;" oninput="updateOdds(this.value)">
+    <span style="margin-left: 5px;">
+        <span id="odds-display" style="display: inline-block; width: auto; text-align: left; font-size: 20px;">2.00</span>
+    </span>
+<div style="display: flex; justify-content: flex-end; margin: 0; padding: 0; width: 100%; position: absolute; top: 0; right: 10px;">
+    <a href="/soccer" style="font-size: 12px; margin-right: 10px;">SOCCER</a>
+    <a href="/hockey" style="font-size: 12px; margin-right: 10px;">HOCKEY</a>
+    <a href="/handball" style="font-size: 12px;">HANDBALL</a>
+</div>
 </h1>
+
+<script>
+    function updateOdds(probability) {
+        let formattedProbability = parseFloat(probability).toFixed(1);
+        let odds = (100 / probability).toFixed(2);
+        document.getElementById('percentage-display').textContent = formattedProbability + '%';
+        document.getElementById('odds-display').textContent = odds;
+    }
+</script>
     <hr>
     {% if errors %}
         <div style="color: red;">
@@ -322,14 +302,14 @@ th {
             <th>3.5+</th>
             <th>BTTS</th>
             <th>ROI TO 2.5</th>
-            {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
                 <th>HC -2.5</th>
                 <th>HC -1.5</th>
                 <th>HC -0.5</th>
                 <th>HC +0.5</th>
                 <th>HC +1.5</th>
                 <th>HC +2.5</th>
-            {% endif %}
+
         </tr>
     </thead>
     <tbody>
@@ -343,14 +323,14 @@ th {
                 <td>{{ stats.over_3_5 }}</td>
                 <td>{{ stats.both_teams_scored }}</td>
                 <td>{{ stats.roi_total_2_5 }}</td>
-                {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
                     <td>{{ stats.win_with_handicap_2_5 }}</td>
                     <td>{{ stats.win_with_handicap_1_5 }}</td>
                     <td>{{ stats.win_with_handicap_0_5 }}</td>
                     <td>{{ stats.win_with_handicap__0_5 }}</td>
                     <td>{{ stats.win_with_handicap__1_5 }}</td>
                     <td>{{ stats.win_with_handicap__2_5 }}</td>
-                {% endif %}
+
             </tr>
         {% endfor %}
     </tbody>
@@ -375,14 +355,14 @@ th {
             <th>3.5+</th>
             <th>BTTS</th>
             <th>ROI TO 2.5</th>
-                        {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
             <th>HC -2.5</th>
             <th>HC -1.5</th>
             <th>HC -0.5</th>
             <th>HC +0.5</th>
             <th>HC +1.5</th>
             <th>HC +2.5</th>
-            {% endif %}
+
         </tr>
     </thead>
     <tbody>
@@ -396,14 +376,14 @@ th {
                 <td>{{ stats.over_3_5 }}</td>
                 <td>{{ stats.both_teams_scored }}</td>
                 <td>{{ stats.roi_total_2_5 }}</td>
-                            {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
                 <td>{{ stats.win_with_handicap_2_5 }}</td>
                 <td>{{ stats.win_with_handicap_1_5 }}</td>
                 <td>{{ stats.win_with_handicap_0_5 }}</td>
                 <td>{{ stats.win_with_handicap__0_5 }}</td>
                 <td>{{ stats.win_with_handicap__1_5 }}</td>
                 <td>{{ stats.win_with_handicap__2_5 }}</td>
-                {% endif %}
+
             </tr>
         {% endfor %}
     </tbody>
@@ -428,7 +408,7 @@ th {
                         <th>9.5+</th>
                         <th>10.5+</th>
                         <th>11.5+</th>
-                                                    {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
                         <th>HC -4.5</th>
                         <th>HC -3.5</th>
                         <th>HC -2.5</th>
@@ -439,7 +419,7 @@ th {
                         <th>HC +2.5</th>
                         <th>HC +3.5</th>
                         <th>HC +4.5</th>
-                        {% endif %}
+
                     </tr>
                 </thead>
                 <tbody>
@@ -453,7 +433,7 @@ th {
                         <td>{{ stats.corners_over_9_5 }}</td>
                         <td>{{ stats.corners_over_10_5 }}</td>
                         <td>{{ stats.corners_over_11_5 }}</td>
-                                                    {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
                         <td>{{ stats.corners_win_with_handicap_4_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_3_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_2_5 }}</td>
@@ -464,7 +444,7 @@ th {
                         <td>{{ stats.corners_win_with_handicap__2_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap__3_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap__4_5 }}</td>
-                        {% endif %}
+
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -489,7 +469,7 @@ th {
                         <th>9.5+</th>
                         <th>10.5+</th>
                         <th>11.5+</th>
-                                                    {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
                         <th>HC -4.5</th>
                         <th>HC -3.5</th>
                         <th>HC -2.5</th>
@@ -500,7 +480,7 @@ th {
                         <th>HC +2.5</th>
                         <th>HC +3.5</th>
                         <th>HC +4.5</th>
-                        {% endif %}
+
                     </tr>
                 </thead>
                 <tbody>
@@ -514,7 +494,7 @@ th {
                         <td>{{ stats.corners_over_9_5 }}</td>
                         <td>{{ stats.corners_over_10_5 }}</td>
                         <td>{{ stats.corners_over_11_5 }}</td>
-                                                    {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
                         <td>{{ stats.corners_win_with_handicap_4_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_3_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap_2_5 }}</td>
@@ -525,7 +505,7 @@ th {
                         <td>{{ stats.corners_win_with_handicap__2_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap__3_5 }}</td>
                         <td>{{ stats.corners_win_with_handicap__4_5 }}</td>
-                        {% endif %}
+
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -549,12 +529,12 @@ th {
                         <th>3.5+</th>
                         <th>4.5+</th>
                         <th>5.5+</th>
-                                                    {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
                         <th>HC -1.5</th>
                         <th>HC -0.5</th>
                         <th>HC +0.5</th>
                         <th>HC +1.5</th>
-                        {% endif %}
+
                     </tr>
                 </thead>
                 <tbody>
@@ -567,19 +547,18 @@ th {
                             <td>{{ stats.yellow_cards_over_3_5 }}</td>
                             <td>{{ stats.yellow_cards_over_4_5 }}</td>
                             <td>{{ stats.yellow_cards_over_5_5 }}</td>
-                                                        {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
                             <td>{{ stats.yellow_cards_win_with_handicap_minus_1_5 }}</td>
                             <td>{{ stats.yellow_cards_win_with_handicap_minus_0_5 }}</td>
                             <td>{{ stats.yellow_cards_win_with_handicap_minus__0_5 }}</td>
                             <td>{{ stats.yellow_cards_win_with_handicap_minus__1_5 }}</td>
-                            {% endif %}
+
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         {% else %}
-            <p><img src="{{ url_for('static', filename='fon_ball.png') }}" alt="Goals Icon" style="display: block; margin: 0 auto; background-color: inherit;">
-</p>
+            <p></p>
         {% endif %}
     </div>
 
@@ -599,12 +578,12 @@ th {
                         <th>3.5+</th>
                         <th>4.5+</th>
                         <th>5.5+
-                        {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
                         <th>HC -1.5</th>
                         <th>HC -0.5</th>
                         <th>HC +0.5</th>
                         <th>HC +1.5</th>
-                        {% endif %}
+
                     </tr>
                 </thead>
                 <tbody>
@@ -617,24 +596,41 @@ th {
                             <td>{{ stats.yellow_cards_over_3_5 }}</td>
                             <td>{{ stats.yellow_cards_over_4_5 }}</td>
                             <td>{{ stats.yellow_cards_over_5_5 }}</td>
-                            {% if form_data.get('win_home_open') or form_data.get('win_home_close') %}
+
                             <td>{{ stats.yellow_cards_win_with_handicap_minus_1_5 }}</td>
                             <td>{{ stats.yellow_cards_win_with_handicap_minus_0_5 }}</td>
                             <td>{{ stats.yellow_cards_win_with_handicap_minus__0_5 }}</td>
                             <td>{{ stats.yellow_cards_win_with_handicap_minus__1_5 }}</td>
-                            {% endif %}
+
                         </tr>
                     {% endfor %}
+
                 </tbody>
             </table>
         {% else %}
             <p></p>
+
         {% endif %}
     </div>
 </div>
-</div>
-<hr>
 
+
+<div id="team-stats" {% if form_data.get('team1') or form_data.get('team2') %}>
+    <p>
+        <strong>{{ form_data.get('team1', '') }}</strong> 1 Half Over 0.5: <span id="team1-over-0-5"></span>%,
+        1 Half Over 1.5: <span id="team1-over-1-5"></span>% |
+        <strong>{{ form_data.get('team2', '') }}</strong> 1 Half Over 0.5: <span id="team2-over-0-5"></span>%,
+        1 Half Over 1.5: <span id="team2-over-1-5"></span>%
+    </p>
+        {% endif %}
+</div>
+
+<hr>
+<div>
+    <label for="ht-score-filter">Halftime Score Filter:</label>
+    <input type="text" id="ht-score-filter" placeholder="0-0" maxlength="5" style="width: 5ch;">
+    <button onclick="filterByHalfTimeScore()">Filter</button>
+</div>
 {% if matches_team1 %}
 <h2> {{ form_data.get('team1', '') }} Matches</h2>
     <table id="matches-team1">
@@ -766,11 +762,18 @@ th {
         </tbody>
     </table>
 {% else %}
-    <p></p>
+<p>
+    <img src="{{ url_for('static', filename='fon_ball.png') }}" alt="Goals Icon"
+         style="display: block; margin: 0 auto; background-color: inherit; max-width: 100px; width: 100%; height: auto;">
+</p>
 {% endif %}
 
 
 <script src="static/findteam.js"></script>
 <script src="static/percentcount.js"></script>
+<script src="static/firsthalfcount.js"></script>
+<script src="static/firsthalffilter.js"></script>
+
+
 </body>
 </html>
