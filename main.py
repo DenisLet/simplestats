@@ -1692,4 +1692,4 @@ def calculate_goals_statistics_hb(matches, mid_total, selected_bookmaker):
     return dict(league_stats)
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(port=80)
