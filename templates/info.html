@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MEF1NWR8NT"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-MEF1NWR8NT');
+    </script>
+    <link rel="icon" href="{{ url_for('static', filename='icon_red.png') }}" type="image/png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simplestats</title>
+    <style>
+        @font-face {
+            font-family: 'MOSCOW2024';
+            src: url('static/fonts/MOSCOW2024.otf') format('opentype');
+        }
+
+        body {
+            font-family: 'MOSCOW2024', Arial, sans-serif;
+            margin: 20px;
+        }
+
+        input, textarea, select, button {
+            font-family: 'MOSCOW2024', Arial, sans-serif;
+        }
+form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+}
+
+label {
+    margin-right: 5px;
+}
+
+input, select, button {
+    margin-right: 10px;
+}
+
+.group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-right: 20px;
+}
+
+.odds-input {
+    width: 60px;
+    text-align: center;
+}
+
+.odds-input-date {
+    width: 100px;
+    text-align: center;
+}
+
+.suggestions {
+    max-height: 150px;
+    overflow-y: auto;
+    background: white;
+    position: absolute;
+    z-index: 1000;
+    width: 100%;
+}
+
+.suggestion-item {
+    padding: 5px;
+    cursor: pointer;
+}
+
+.suggestion-item:hover {
+    background-color: #f0f0f0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    text-align: left;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+th {
+    background-color: #f4f4f4;
+}
+
+/* Унифицированный стиль для блоков с отступами */
+.block {
+    margin: 20px;
+}
+
+.stat-block table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.stat-block th,
+.stat-block td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+.stat-block th {
+    background-color: #f4f4f4;
+}
+
+.score-input {
+    display: flex;
+    justify-content: center; /* Center align the entire block */
+    align-items: center;
+}
+
+.team-score {
+    display: flex;
+    flex-direction: column; /* Stack the label and input vertically */
+    align-items: center; /* Center the label and input horizontally */
+    margin: 0 10px; /* Space between the teams */
+}
+
+.score-field {
+    width: 20px; /* Set input width to fit 2 digits */
+    text-align: center; /* Center the text inside the input */
+    margin-top: 5px; /* Space between the label and input */
+}
+@media (max-width: 768px) {
+    .group {
+        display: flex;
+        flex-wrap: nowrap;  /* Принудительно не переносить элементы на следующую строку */
+        justify-content: space-between; /* Распределяем элементы по строке */
+        width: 100%;
+    }
+
+    .odds-input {
+        width: 22%;  /* Уменьшаем ширину инпутов для того, чтобы все поместились */
+        text-align: center;
+    }
+
+    .group label {
+        width: 100%; /* Лейблы остаются сверху */
+    }
+
+    /* Дополнительная настройка для каждого блока */
+    .group:nth-child(3), .group:nth-child(4) {
+        display: flex;
+        justify-content: space-between;
+    }
+}
+
+    </style>
+</head>
+
+<body>
+<h1 style="display: flex; align-items: center;">
+
+<div style="display: flex; justify-content: flex-end; margin: 0; padding: 0; width: 100%; position: absolute; top: 0; right: 10px;">
+    <a href="/soccer" style="font-size: 20px; margin-right: 10px;">SOCCER</a>
+    <a href="/hockey" style="font-size: 20px; margin-right: 10px;">HOCKEY</a>
+    <a href="/handball" style="font-size: 20px; margin-right: 10px;">HANDBALL</a>
+    <a href="/info" style="font-size: 20px;">INFO</a>
+</div>
+
+</h1>
+
+
+
+<h2 style="text-align: center; margin-top: 20px;">HOW TO USE IT</h2>
+<!-- Переносим Telegram ссылку сюда, после заголовка -->
+<div style="display: flex; align-items: center; justify-content: center; margin-top: 20px;">
+    <li style="display: flex; align-items: center;">
+        <img class="small-icon" src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" alt="Telegram Chat Icon">
+        <a href="https://t.me/+mrbNPOdDHeg5Njdk" target="_blank">discuss</a>
+    </li>
+</div>
+
+<style>
+    .small-icon {
+        width: 30px;  /* Уменьшаем ширину иконки */
+        height: 30px; /* Уменьшаем высоту иконки */
+        margin-right: 10px; /* Отступ справа от иконки */
+    }
+</style>
+
+<!-- Вставка картинки -->
+<div style="text-align: center; margin-top: 10px;">
+    <img src="{{ url_for('static', filename='oddsbar.png') }}" alt="Odds Bar" style="max-width: 100%; height: auto;">
+</div>
+
+<!-- Вставка текста -->
+<div style="max-width: 800px; margin: 20px auto; font-size: 16px; line-height: 1.5;">
+    <p><strong>Slider shows the probability of an event in percentage - corresponding to the bookmaker's odds * excluding the margin.</strong></p>
+    <p><strong>1. Enter or Select Team Names</strong><br>
+    - Type the team names manually or use the <strong>filling</strong> checkbox.<br>
+    - If using filling, type the first three letters and select from the list.<br>
+    - It's best to use official English team names (like on <strong>OddsPortal, FlashScore, Transfermarkt etc.</strong>).</p>
+
+    <p><strong>2. Enter the Opening Odds for the Home Team</strong><br>
+    - Input the opening odds **for the home team** when the bookmaker first releases them.<br>
+    - Set the <strong>+ and - range</strong> to define a search window.<br>
+    - Example: If the odds are <strong>2.00</strong>, setting <strong>+0.1</strong> and <strong>-0.1</strong> will search within <strong>1.90 - 2.10</strong>.<br>
+    - <em>Always set a range to get more match results.</em></p>
+
+    <p><strong>3. Enter the Closing Odds for the Home Team</strong><br>
+    - Do the same as in Step 2, but for the odds just before the match starts.</p>
+
+    <p><strong>4. Set the Over 2.5 Opening Odds</strong><br>
+    - Enter the opening odds for the <strong>Over 2.5 goals</strong> market.<br>
+    - Use <strong>+ and - range</strong> as in Step 2.</p>
+
+    <p><strong>5. Set the Over 2.5 Closing Odds</strong><br>
+    - Same as Step 4, but for the closing odds before the match.</p>
+
+    <p><strong>6. Select a Bookmaker</strong><br>
+    - Choose the bookmaker whose odds you want to analyze.</p>
+
+    <p><strong>7. Select the Start Date for Statistics</strong><br>
+    - Choose the date from which you want to start collecting match stats.</p>
+
+    <p><strong>8. Filter by Previous Match Score</strong><br>
+    - Enter a past match score to see how teams performed in the next matches.</p>
+
+    <p>All filters can be applied together or separately. The only required input is the team name.</p>
+</div>
+<img src="{{ url_for('static', filename='mainwindow.png') }}" alt="Main Window" style="display: block; margin: 20px auto; max-width: 100%;">
+<div style="max-width: 800px; margin: 20px auto; font-size: 16px; line-height: 1.5;">
+    <p><strong>1. Team Performance Overview</strong><br>
+    Here are the past match results of the <strong>first team</strong>, filtered based on the selected criteria.
+    - <strong>0.5+ - 3.5+</strong>: Number of matches with the corresponding "Over" total.
+    - <strong>BTTS</strong>: Matches where both teams scored.
+    - <strong>ROI TO 2.5</strong>: Return on investment (ROI) based on the closing odds.
+    - <strong>HC-2.5 / HC+2.5</strong>: Number of matches with the corresponding handicap.</p>
+
+    <p><strong>2. Second Team Performance</strong><br>
+    The same statistics as above, but for the <strong>second team</strong>.</p>
+
+    <p><strong>3. Corner Totals & Handicaps</strong><br>
+    - Number of matches with "Over" totals and handicaps for corners.
+    - First team data.</p>
+
+    <p><strong>4. Corner Stats for the Second Team</strong><br>
+    The same corner statistics, but for the <strong>second team</strong>.</p>
+
+    <p><strong>5. Yellow Card Totals & Handicaps</strong><br>
+    - Number of matches with "Over" totals and handicaps for yellow cards.
+    - First team data.</p>
+
+    <p><strong>6. Yellow Card Stats for the Second Team</strong><br>
+    The same yellow card statistics, but for the <strong>second team</strong>.</p>
+
+    <p><strong>7. First-Half Totals</strong><br>
+    Total goals for both teams in the first half.</p>
+</div>
+<div style="text-align: center; margin-top: 20px;">
+    <img src="{{ url_for('static', filename='statstable.png') }}" alt="Statistics Table" style="max-width: 100%; height: auto;">
+</div>
+<div style="max-width: 800px; margin: 20px auto; font-size: 16px; line-height: 1.5;">
+    <p><strong>1. Table of Matches for the First Team</strong><br>
+    Displays matches found based on the selected filters for the first team.</p>
+
+    <p><strong>2. Table of Matches for the Second Team</strong><br>
+    Shows filtered matches for the second team.</p>
+
+    <p><strong>3. First-Half Results Filter</strong><br>
+    Apply a filter to view only matches based on first-half results.</p>
+</div>
+
+<div style="max-width: 800px; margin: 40px auto 20px; font-size: 18px; font-weight: bold; text-align: center;">
+    It is important to understand that this is only basic historical statistics.
+    It should not be the main reason for placing bets.
+    This data is just for analysis and finding patterns in team performances.
+</div>
+
+
+
+

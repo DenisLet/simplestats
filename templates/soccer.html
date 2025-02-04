@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+        <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MEF1NWR8NT"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-MEF1NWR8NT');
+    </script>
+    <link rel="icon" href="{{ url_for('static', filename='icon_red.png') }}" type="image/png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simplestats</title>
@@ -164,7 +174,8 @@ th {
 <div style="display: flex; justify-content: flex-end; margin: 0; padding: 0; width: 100%; position: absolute; top: 0; right: 10px;">
     <a href="/soccer" style="font-size: 12px; margin-right: 10px;">SOCCER</a>
     <a href="/hockey" style="font-size: 12px; margin-right: 10px;">HOCKEY</a>
-    <a href="/handball" style="font-size: 12px;">HANDBALL</a>
+    <a href="/handball" style="font-size: 12px; margin-right: 10px;">HANDBALL</a>
+    <a href="/info" style="font-size: 12px;">INFO</a>
 </div>
 </h1>
 

@@ -13,7 +13,6 @@ engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-@app.route("/", methods=["GET", "POST"])
 @app.route("/soccer", methods=["GET", "POST"])
 def soccer():
     selected_bookmaker = "Bet365"  # Значение по умолчанию
@@ -1691,5 +1690,10 @@ def calculate_goals_statistics_hb(matches, mid_total, selected_bookmaker):
 
     return dict(league_stats)
 
+@app.route("/", methods=["GET"])
+@app.route("/info", methods=["GET"])
+def info():
+    return render_template('info.html')
+
 if __name__ == "__main__":
-    app.run(port=80)
+    app.run(debug=True,port=80)
