@@ -1,4 +1,4 @@
-// Функция автозаполнения
+
 function setupAutocomplete(inputId, suggestionsId, searchUrl) {
     const input = document.getElementById(inputId);
     const suggestions = document.getElementById(suggestionsId);
@@ -6,7 +6,7 @@ function setupAutocomplete(inputId, suggestionsId, searchUrl) {
     async function handleInput() {
         const query = input.value.trim();
         if (query.length < 3) {
-            suggestions.innerHTML = ""; // Очистка списка предложений
+            suggestions.innerHTML = "";
             return;
         }
 
@@ -21,7 +21,7 @@ function setupAutocomplete(inputId, suggestionsId, searchUrl) {
                 item.textContent = team;
                 item.onclick = () => {
                     input.value = team;
-                    suggestions.innerHTML = ""; // Очистка списка после выбора
+                    suggestions.innerHTML = "";
                 };
                 suggestions.appendChild(item);
             });
@@ -30,7 +30,7 @@ function setupAutocomplete(inputId, suggestionsId, searchUrl) {
 
     function handleClickOutside(e) {
         if (!suggestions.contains(e.target) && e.target !== input) {
-            suggestions.innerHTML = ""; // Очистка при клике вне списка
+            suggestions.innerHTML = "";
         }
     }
 
@@ -40,28 +40,32 @@ function setupAutocomplete(inputId, suggestionsId, searchUrl) {
     return () => {
         input.removeEventListener("input", handleInput);
         document.removeEventListener("click", handleClickOutside);
-        suggestions.innerHTML = ""; // Очистка предложений при отключении
+        suggestions.innerHTML = "";
     };
 }
 
-// Инициализация автозаполнения
+
 let disableAutocompleteTeam1;
 let disableAutocompleteTeam2;
 
 function initAutocomplete() {
-    // Получаем текущую страницу (если она soccer или hockey)
+
     const currentPage = window.location.pathname;
 
-    // Устанавливаем правильный URL для поиска команд в зависимости от текущей страницы
-    let searchUrl = "/search_teams"; // По умолчанию ищем футбольные команды
+
+    let searchUrl = "/search_teams";
     if (currentPage.includes("hockey")) {
-        searchUrl = "/search_hockey_teams"; // Если на странице хоккей, ищем хоккейные команды
+        searchUrl = "/search_hockey_teams";
     }
     if (currentPage.includes("handball")) {
-        searchUrl = "/search_handball_teams"; // Если на странице хоккей, ищем хоккейные команды
+        searchUrl = "/search_handball_teams";
     }
 
-    // Инициализация автозаполнения только если чекбокс выбран
+    if (currentPage.includes("basketball")) {
+        searchUrl = "/search_basketball_teams";
+    }
+
+
     const autocompleteToggle = document.getElementById("autocomplete-toggle");
     if (autocompleteToggle.checked) {
         disableAutocompleteTeam1 = setupAutocomplete("team1", "team1-suggestions", searchUrl);
@@ -69,29 +73,32 @@ function initAutocomplete() {
     }
 }
 
-// Управление автозаполнением через чекбокс
+
 const autocompleteToggle = document.getElementById("autocomplete-toggle");
 
 autocompleteToggle.addEventListener("change", (e) => {
     const currentPage = window.location.pathname;
-    let searchUrl = "/search_teams"; // По умолчанию ищем футбольные команды
+    let searchUrl = "/search_teams";
     if (currentPage.includes("hockey")) {
-        searchUrl = "/search_hockey_teams"; // Если на странице хоккей, ищем хоккейные команды
+        searchUrl = "/search_hockey_teams";
     }
     if (currentPage.includes("handball")) {
-        searchUrl = "/search_handball_teams"; // Если на странице гандбол, ищем гандбольные команды
+        searchUrl = "/search_handball_teams";
+    }
+    if (currentPage.includes("basketball")) {
+        searchUrl = "/search_basketball_teams";
     }
 
     if (e.target.checked) {
-        // Включаем автозаполнение
+
         disableAutocompleteTeam1 = setupAutocomplete("team1", "team1-suggestions", searchUrl);
         disableAutocompleteTeam2 = setupAutocomplete("team2", "team2-suggestions", searchUrl);
     } else {
-        // Отключаем автозаполнение
+
         if (disableAutocompleteTeam1) disableAutocompleteTeam1();
         if (disableAutocompleteTeam2) disableAutocompleteTeam2();
     }
 });
 
-// Инициализация автозаполнения при загрузке страницы в зависимости от состояния чекбокса
+
 document.addEventListener("DOMContentLoaded", initAutocomplete);

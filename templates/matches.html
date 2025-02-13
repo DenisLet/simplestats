@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matches</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7fa;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #444;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        table {
+            width: 60%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px 20px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        .recent-match {
+            background-color: #d4edda;
+        }
+
+        @media (max-width: 768px) {
+            table {
+                width: 100%;
+                font-size: 14px;
+            }
+
+            button {
+                font-size: 14px;
+                padding: 8px 16px;
+            }
+        }
+    </style>
+    <script>
+        let currentSport = 'football';
+        let previousMatches = [];
+
+        function fetchMatches() {
+            fetch('/api/new_matches')
+                .then(response => response.json())
+                .then(data => {
+                    const matches = data[currentSport + '_matches'];
+                    if (isNewMatch(matches)) {
+                        playSound();
+                    }
+                    updateTable(matches);
+                    previousMatches = matches;
+                })
+                .catch(error => console.error('Error loading matches:', error));
+        }
+
+        function isNewMatch(matches) {
+            if (previousMatches.length === 0) return false;
+            const previousMatchIds = new Set(previousMatches.map(match => match.join('|')));
+            return matches.some(match => !previousMatchIds.has(match.join('|')));
+        }
+
+        function playSound() {
+            const audio = new Audio('/static/zvon.ogg');
+            audio.play().catch(error => console.error('Error playing sound:', error));
+        }
+
+        function updateTable(matches) {
+            const tableBody = document.getElementById('matches-table-body');
+            tableBody.innerHTML = '';
+
+            const currentTime = new Date().getTime();
+
+            matches.forEach(match => {
+                const matchFoundTime = new Date(match[4] + ' UTC').getTime();
+                const timeDifference = (currentTime - matchFoundTime) / 1000 / 60;
+
+                let rowClass = '';
+                if (timeDifference < 20) {
+                    rowClass = 'recent-match';
+                }
+
+                let row = `<tr class="${rowClass}">
+                    <td>${match[0]}</td>
+                    <td>${match[1]}</td>
+                    <td>${match[2]}</td>
+                    <td>${match[3]}</td>
+                    <td>${match[4]}</td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function switchSport(sport) {
+            currentSport = sport;
+            fetchMatches();
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            fetchMatches();
+            setInterval(fetchMatches, 10000);
+        });
+    </script>
+</head>
+<body>
+    <h1>New Matches</h1>
+    <div>
+        <button onclick="switchSport('football')">Football</button>
+        <button onclick="switchSport('basketball')">Basketball</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>League</th>
+                <th>Home Team</th>
+                <th>Away Team</th>
+                <th>Start Time</th>
+                <th>Found</th>
+            </tr>
+        </thead>
+        <tbody id="matches-table-body">
+        </tbody>
+    </table>
+</body>
+</html>

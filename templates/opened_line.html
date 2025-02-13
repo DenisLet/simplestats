@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MEF1NWR8NT"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-MEF1NWR8NT');
+    </script>
+    <link rel="icon" href="{{ url_for('static', filename='icon_red.png') }}" type="image/png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simplestats</title>
+    <style>
+        @font-face {
+            font-family: 'MOSCOW2024';
+            src: url('static/fonts/MOSCOW2024.otf') format('opentype');
+        }
+
+        body {
+            font-family: 'MOSCOW2024', Arial, sans-serif;
+            background-color: #f4f7fa;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #444;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        table {
+            width: 60%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px 20px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        .recent-match {
+            background-color: #d4edda !important;
+        }
+
+        @media (max-width: 768px) {
+            table {
+                width: 100%;
+                font-size: 14px;
+            }
+
+            button {
+                font-size: 14px;
+                padding: 8px 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Pinn** Fresh Line (test mode)</h1>
+
+<div style="display: flex; justify-content: flex-end; margin: 0; padding: 0; width: 100%; position: absolute; top: 0; right: 10px;">
+    <a href="/soccer" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/ball_goal.png" alt="Soccer" style="height: 24px; margin-right: 5px;"> SOCCER
+    </a>
+    <a href="/hockey" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/shajba.png" alt="Hockey" style="height: 24px; margin-right: 5px;"> HOCKEY
+    </a>
+    <a href="/handball" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/handball.png" alt="Handball" style="height: 24px; margin-right: 5px;"> HANDBALL
+    </a>
+    <a href="/basketball" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/bball.png" alt="Basketball" style="height: 24px; margin-right: 5px;"> BASKETBALL
+    </a>
+    <a href="/info" style="font-size: 20px; margin-right: 10px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">INFO</a>
+    <a href="/opened_line" style="font-size: 20px; margin-right: 20px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">NEWLINE</a>
+</div>
+
+    <div>
+        <button onclick="switchSport('football')">Football</button>
+        <button onclick="switchSport('basketball')">Basketball</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>League</th>
+                <th>Home Team</th>
+                <th>Away Team</th>
+                <th>Start Time</th>
+                <th>Found</th>
+            </tr>
+        </thead>
+        <tbody id="matches-table-body">
+        </tbody>
+    </table>
+<script src="static/newmatches.js"></script>
+
+</body>
+</html>

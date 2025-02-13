@@ -249,9 +249,9 @@ th {
 
         <div class="group">
             <label>MID. Total</label>
-            <input type="text" class="odds-input" name="mid_total" value="{{ request.form.get('mid_total', 60) }}" placeholder="Total" maxlength="5">
-            <input type="text" class="odds-input" name="mid_total_plus" value="{{ request.form.get('mid_total_plus', 3) }}" placeholder="+" maxlength="5">
-            <input type="text" class="odds-input" name="mid_total_minus" value="{{ request.form.get('mid_total_minus', 3) }}" placeholder="-" maxlength="5">
+            <input type="text" class="odds-input" name="mid_total" value="{{ request.form.get('mid_total', 160) }}" placeholder="Total" maxlength="5">
+            <input type="text" class="odds-input" name="mid_total_plus" value="{{ request.form.get('mid_total_plus', 4) }}" placeholder="+" maxlength="5">
+            <input type="text" class="odds-input" name="mid_total_minus" value="{{ request.form.get('mid_total_minus', 4) }}" placeholder="-" maxlength="5">
         </div>
 
         <div class="group">
@@ -271,7 +271,8 @@ th {
         <div class="group">
             <label>Bookmaker:</label>
             <select name="bookmaker">
-                <option value="1XBet">1XBet</option>
+                <option value="Bet365" {% if selected_bookmaker == "Bet365" %}selected{% endif %}>Bet365</option>
+                <option value="1XBet" {% if selected_bookmaker == "1XBet" %}selected{% endif %}>1XBet</option>
             </select>
         </div>
         <div class="group">
@@ -292,10 +293,10 @@ th {
     <div class="stat-block">
                 {% if goasl_main1 %}
 
-        <h3><img src="{{ url_for('static', filename='handball.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Goals {{ form_data.get('team1', '') }}</h3>
+        <h3><img src="{{ url_for('static', filename='bball.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Goals {{ form_data.get('team1', '') }}</h3>
 
 <table>
-{% set mid_total = mid_total or 60 %}
+{% set mid_total = mid_total or 160 %}
 
 <thead>
     <tr>
@@ -341,7 +342,7 @@ th {
     <!-- Голы -->
     <div class="stat-block">
                 {% if goasl_main2 %}
-        <h3><img src="{{ url_for('static', filename='handball.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Goals {{ form_data.get('team2', '') }}</h3>
+        <h3><img src="{{ url_for('static', filename='bball.png') }}" alt="Goals Icon" style="width: 20px; height: 20px; vertical-align: middle;"> Goals {{ form_data.get('team2', '') }}</h3>
 
 <table>
     <thead>
@@ -575,19 +576,34 @@ th {
 </div>
 <hr>
 <div id="team-stats" {% if form_data.get('team1') or form_data.get('team2') %}>
-<p>
-    <strong>{{ form_data.get('team1', '') }}</strong>
-    1st Period <span id="team1-min"></span>,<span id="team1-max"></span> |
+    <p>
+        <strong>{{ form_data.get('team1', '') }}</strong>
+        1st Quarter <span id="team1-min"></span>,  <span id="team1-max"></span> |
 
-    <strong>{{ form_data.get('team2', '') }}</strong>
-    1st Period <span id="team2-min"></span>,<span id="team2-max"></span> |
+        <strong>{{ form_data.get('team2', '') }}</strong>
+        1st Quarter <span id="team2-min"></span>,  <span id="team2-max"></span> |
 
-    <strong>Both HT Team 1</strong>
-    <span id="total-min-team1"></span>,<span id="total-max-team1"></span> |
+        <strong>Both 1Q Team 1</strong>
+        <span id="total-min-team1"></span>, <span id="total-max-team1"></span> |
 
-    <strong>Both HT Team 2</strong>
-    <span id="total-min-team2"></span>,<span id="total-max-team2"></span>
-</p>
+        <strong>Both 1Q Team 2</strong>
+        <span id="total-min-team2"></span>, <span id="total-max-team2"></span>
+    </p>
+<div id="bb_half_stats">
+    <p>
+        <strong>{{ form_data.get('team1', '') }}</strong>
+        Half Min: <span id="bb_half_team1-min"></span>, Max: <span id="bb_half_team1-max"></span> |
+
+        <strong>{{ form_data.get('team2', '') }}</strong>
+        Half Min: <span id="bb_half_team2-min"></span>, Max: <span id="bb_half_team2-max"></span> |
+
+        <strong>Both Half Team 1</strong>
+        <span id="total-min-bb_half_team1"></span>, <span id="total-max-bb_half_team1"></span> |
+
+        <strong>Both Half Team 2</strong>
+        <span id="total-min-bb_half_team2"></span>, <span id="total-max-bb_half_team2"></span>
+    </p>
+</div>
 {% endif %}
 </div>
 
@@ -607,7 +623,9 @@ th {
                 <th>Team 1</th>
                 <th>Team 2</th>
                 <th>Reg. Time</th>
-                <th>Half Time</th>
+                <th>1 qurater</th>
+                <th>2 qurater</th>
+                <th>3 qurater</th>
                 <th>League</th>
                 <th>MID. Total</th>
                 <th>MID. Total  open</th>
@@ -623,15 +641,23 @@ th {
                 <td>{{ match.team_home }}</td>
                 <td>{{ match.team_away }}</td>
                 <td>{{ match.home_score_ft }} - {{ match.away_score_ft }}</td>
-                <td>{{ match.home_1h }} - {{ match.away_1h }}</td>
+                <td>{{ match.home_1q }} - {{ match.away_1q }}</td>
+                <td>{{ match.home_2q }} - {{ match.away_2q }}</td>
+                <td>{{ match.home_3q }} - {{ match.away_3q }}</td>
                 <td>{{ match.league_name }}</td>
 
                 {% if selected_bookmaker == '1XBet' %}
-                    <td>{{ match.xbet_odds_hb.total_value if match.xbet_odds_hb else 'Нет данных' }}</td>
-                    <td>{{ match.xbet_odds_hb.total_odds_open if match.xbet_odds_hb else 'Нет данных' }}</td>
-                    <td>{{ match.xbet_odds_hb.total_odds_close if match.xbet_odds_hb else 'Нет данных' }}</td>
-                    <td>{{ match.xbet_odds_hb.win_home_open if match.xbet_odds_hb else 'Нет данных' }}</td>
-                    <td>{{ match.xbet_odds_hb.win_home_close if match.xbet_odds_hb else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_bb.total_value if match.xbet_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_bb.total_odds_open if match.xbet_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_bb.total_odds_close if match.xbet_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_bb.win_home_open if match.xbet_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_bb.win_home_close if match.xbet_odds_bb else 'Нет данных' }}</td>
+                {% elif selected_bookmaker == 'Bet365' %}
+                    <td>{{ match.bet365_odds_bb.total_value if match.bet365_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds_bb.total_odds_open if match.bet365_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds_bb.total_odds_close if match.bet365_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds_bb.win_home_open if match.bet365_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds_bb.win_home_close if match.bet365_odds_bb else 'Нет данных' }}</td>
                 {% else %}
                     <td>Выберите букмекера</td>
                     <td>Выберите букмекера</td>
@@ -644,7 +670,7 @@ th {
     </table>
 {% else %}
 <p>
-    <img src="{{ url_for('static', filename='handball.png') }}" alt="Goals Icon"
+    <img src="{{ url_for('static', filename='bball.png') }}" alt="Goals Icon"
          style="display: block; margin: 0 auto; background-color: inherit; max-width: 100px; width: 100%; height: auto;">
 </p>
 {% endif %}
@@ -658,7 +684,9 @@ th {
                 <th>Team 1</th>
                 <th>Team 2</th>
                 <th>Reg. Time</th>
-                <th>Half Time</th>
+                <th>1 qurater</th>
+                <th>2 qurater</th>
+                <th>3 qurater</th>
                 <th>League</th>
                 <th>MID. Total</th>
                 <th>MID. Total  open</th>
@@ -674,15 +702,23 @@ th {
                 <td>{{ match.team_home }}</td>
                 <td>{{ match.team_away }}</td>
                 <td>{{ match.home_score_ft }} - {{ match.away_score_ft }}</td>
-                <td>{{ match.home_1h }} - {{ match.away_1h }}</td>
+                <td>{{ match.home_1q }} - {{ match.away_1q }}</td>
+                <td>{{ match.home_2q }} - {{ match.away_2q }}</td>
+                <td>{{ match.home_3q }} - {{ match.away_3q }}</td>
                 <td>{{ match.league_name }}</td>
 
                 {% if selected_bookmaker == '1XBet' %}
-                    <td>{{ match.xbet_odds_hb.total_value if match.xbet_odds_hb else 'Нет данных' }}</td>
-                    <td>{{ match.xbet_odds_hb.total_odds_open if match.xbet_odds_hb else 'Нет данных' }}</td>
-                    <td>{{ match.xbet_odds_hb.total_odds_close if match.xbet_odds_hb else 'Нет данных' }}</td>
-                    <td>{{ match.xbet_odds_hb.win_home_open if match.xbet_odds_hb else 'Нет данных' }}</td>
-                    <td>{{ match.xbet_odds_hb.win_home_close if match.xbet_odds_hb else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_bb.total_value if match.xbet_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_bb.total_odds_open if match.xbet_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_bb.total_odds_close if match.xbet_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_bb.win_home_open if match.xbet_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.xbet_odds_bb.win_home_close if match.xbet_odds_bb else 'Нет данных' }}</td>
+                {% elif selected_bookmaker == 'Bet365' %}
+                    <td>{{ match.bet365_odds_bb.total_value if match.bet365_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds_bb.total_odds_open if match.bet365_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds_bb.total_odds_close if match.bet365_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds_bb.win_home_open if match.bet365_odds_bb else 'Нет данных' }}</td>
+                    <td>{{ match.bet365_odds_bb.win_home_close if match.bet365_odds_bb else 'Нет данных' }}</td>
 
                 {% else %}
                     <td>Выберите букмекера</td>
@@ -708,6 +744,7 @@ th {
 <script src="static/firsthalfcount.js"></script>
 <script src="static/firsthalffilter.js"></script>
 <script src="static/handballfirsthalfminmax.js"></script>
+<script src="static/firsthalfbasketcount.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var tableWrappers = document.querySelectorAll('.table-wrapper');

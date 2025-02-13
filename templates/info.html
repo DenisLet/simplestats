@@ -95,7 +95,7 @@ th {
     background-color: #f4f4f4;
 }
 
-/* Унифицированный стиль для блоков с отступами */
+
 .block {
     margin: 20px;
 }
@@ -137,21 +137,21 @@ th {
 @media (max-width: 768px) {
     .group {
         display: flex;
-        flex-wrap: nowrap;  /* Принудительно не переносить элементы на следующую строку */
-        justify-content: space-between; /* Распределяем элементы по строке */
+        flex-wrap: nowrap;
+        justify-content: space-between;
         width: 100%;
     }
 
     .odds-input {
-        width: 22%;  /* Уменьшаем ширину инпутов для того, чтобы все поместились */
+        width: 22%;
         text-align: center;
     }
 
     .group label {
-        width: 100%; /* Лейблы остаются сверху */
+        width: 100%;
     }
 
-    /* Дополнительная настройка для каждого блока */
+
     .group:nth-child(3), .group:nth-child(4) {
         display: flex;
         justify-content: space-between;
@@ -165,10 +165,20 @@ th {
 <h1 style="display: flex; align-items: center;">
 
 <div style="display: flex; justify-content: flex-end; margin: 0; padding: 0; width: 100%; position: absolute; top: 0; right: 10px;">
-    <a href="/soccer" style="font-size: 20px; margin-right: 10px;">SOCCER</a>
-    <a href="/hockey" style="font-size: 20px; margin-right: 10px;">HOCKEY</a>
-    <a href="/handball" style="font-size: 20px; margin-right: 10px;">HANDBALL</a>
-    <a href="/info" style="font-size: 20px;">INFO</a>
+    <a href="/soccer" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/ball_goal.png" alt="Soccer" style="height: 24px; margin-right: 5px;"> SOCCER
+    </a>
+    <a href="/hockey" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/shajba.png" alt="Hockey" style="height: 24px; margin-right: 5px;"> HOCKEY
+    </a>
+    <a href="/handball" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/handball.png" alt="Handball" style="height: 24px; margin-right: 5px;"> HANDBALL
+    </a>
+    <a href="/basketball" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/bball.png" alt="Basketball" style="height: 24px; margin-right: 5px;"> BASKETBALL
+    </a>
+    <a href="/info" style="font-size: 20px; margin-right: 10px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">INFO</a>
+    <a href="/opened_line" style="font-size: 20px; margin-right: 20px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">NEWLINE</a>
 </div>
 
 </h1>
@@ -176,7 +186,7 @@ th {
 
 
 <h2 style="text-align: center; margin-top: 20px;">HOW TO USE IT</h2>
-<!-- Переносим Telegram ссылку сюда, после заголовка -->
+
 <div style="display: flex; align-items: center; justify-content: center; margin-top: 20px;">
     <li style="display: flex; align-items: center;">
         <img class="small-icon" src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" alt="Telegram Chat Icon">
@@ -186,18 +196,18 @@ th {
 
 <style>
     .small-icon {
-        width: 30px;  /* Уменьшаем ширину иконки */
-        height: 30px; /* Уменьшаем высоту иконки */
-        margin-right: 10px; /* Отступ справа от иконки */
+        width: 30px;
+        height: 30px;
+        margin-right: 10px;
     }
 </style>
 
-<!-- Вставка картинки -->
+
 <div style="text-align: center; margin-top: 10px;">
     <img src="{{ url_for('static', filename='oddsbar.png') }}" alt="Odds Bar" style="max-width: 100%; height: auto;">
 </div>
 
-<!-- Вставка текста -->
+
 <div style="max-width: 800px; margin: 20px auto; font-size: 16px; line-height: 1.5;">
     <p><strong>Slider shows the probability of an event in percentage - corresponding to the bookmaker's odds * excluding the margin.</strong></p>
     <p><strong>1. Enter or Select Team Names</strong><br>

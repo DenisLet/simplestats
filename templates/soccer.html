@@ -95,7 +95,7 @@ th {
     background-color: #f4f4f4;
 }
 
-/* Унифицированный стиль для блоков с отступами */
+
 .block {
     margin: 20px;
 }
@@ -137,21 +137,21 @@ th {
 @media (max-width: 768px) {
     .group {
         display: flex;
-        flex-wrap: nowrap;  /* Принудительно не переносить элементы на следующую строку */
-        justify-content: space-between; /* Распределяем элементы по строке */
+        flex-wrap: nowrap;
+        justify-content: space-between;
         width: 100%;
     }
 
     .odds-input {
-        width: 22%;  /* Уменьшаем ширину инпутов для того, чтобы все поместились */
+        width: 22%;
         text-align: center;
     }
 
     .group label {
-        width: 100%; /* Лейблы остаются сверху */
+        width: 100%;
     }
 
-    /* Дополнительная настройка для каждого блока */
+
     .group:nth-child(3), .group:nth-child(4) {
         display: flex;
         justify-content: space-between;
@@ -172,11 +172,24 @@ th {
         <span id="odds-display" style="display: inline-block; width: auto; text-align: left; font-size: 20px;">2.00</span>
     </span>
 <div style="display: flex; justify-content: flex-end; margin: 0; padding: 0; width: 100%; position: absolute; top: 0; right: 10px;">
-    <a href="/soccer" style="font-size: 12px; margin-right: 10px;">SOCCER</a>
-    <a href="/hockey" style="font-size: 12px; margin-right: 10px;">HOCKEY</a>
-    <a href="/handball" style="font-size: 12px; margin-right: 10px;">HANDBALL</a>
-    <a href="/info" style="font-size: 12px;">INFO</a>
+    <a href="/soccer" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/ball_goal.png" alt="Soccer" style="height: 24px; margin-right: 5px;"> SOCCER
+    </a>
+    <a href="/hockey" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/shajba.png" alt="Hockey" style="height: 24px; margin-right: 5px;"> HOCKEY
+    </a>
+    <a href="/handball" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/handball.png" alt="Handball" style="height: 24px; margin-right: 5px;"> HANDBALL
+    </a>
+    <a href="/basketball" style="font-size: 20px; margin-right: 10px; display: flex; align-items: center; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">
+        <img src="/static/bball.png" alt="Basketball" style="height: 24px; margin-right: 5px;"> BASKETBALL
+    </a>
+    <a href="/info" style="font-size: 20px; margin-right: 10px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">INFO</a>
+    <a href="/opened_line" style="font-size: 20px; margin-right: 20px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">NEWLINE</a>
 </div>
+
+
+
 </h1>
 
 <script>
