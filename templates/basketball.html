@@ -287,6 +287,214 @@ th {
         </div>
     </form>
 <hr>
+<div class="predictions-container">
+  {% for league, data in predictions.items() %}
+  <div class="league-prediction-card">
+    <h4>{{ league }}</h4>
+    <div class="bar-container">
+      <div class="bar over-bar" data-percent="{{ data.percent_over }}" style="width: {{ data.percent_over }}%;">
+        {% if data.percent_over >= 20 %}
+          <span>{{ data.percent_over }}%</span>
+        {% endif %}
+      </div>
+      <div class="bar under-bar" data-percent="{{ data.percent_under }}" style="width: {{ data.percent_under }}%;">
+        {% if data.percent_under >= 20 %}
+          <span>{{ data.percent_under }}%</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="bar-labels">
+      {% if data.percent_over < 20 %}
+        <span class="label-over">Over: {{ data.percent_over }}%</span>
+      {% endif %}
+      {% if data.percent_under < 20 %}
+        <span class="label-under">Under: {{ data.percent_under }}%</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{{ streak_table }}
+<style>
+.predictions-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px auto;
+}
+
+.league-prediction-card {
+  width: 250px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  padding: 10px;
+  transition: transform 0.2s ease;
+}
+
+.league-prediction-card:hover {
+  transform: translateY(-3px);
+}
+
+.league-prediction-card h4 {
+  text-align: center;
+  margin-bottom: 10px;
+  color: #444;
+  font-size: 15px;
+}
+
+.bar-container {
+  display: flex;
+  overflow: hidden;
+  border-radius: 20px;
+  height: 25px;
+  background: #eaeaea;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  position: relative;
+  animation: fill-bar 1.5s ease-in-out forwards;
+}
+
+.bar span {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.bar-labels {
+  margin-top: 5px;
+  text-align: center;
+  font-size: 12px;
+  color: #555;
+}
+
+.label-over {
+  color: #27ae60;
+  margin-right: 10px;
+}
+
+.label-under {
+  color: #e73827;
+}
+
+@keyframes fill-bar {
+  from { width: 0; }
+  to { width: var(--final-width); }
+}
+</style>
+
+<script>
+document.querySelectorAll('.bar').forEach(bar => {
+  const percent = parseFloat(bar.dataset.percent);
+  bar.style.setProperty('--final-width', bar.style.width);
+
+  if(bar.classList.contains('over-bar')) {
+    // Зеленый цвет от светлого (низкий %) к насыщенному (высокий %)
+    bar.style.background = `linear-gradient(45deg, hsl(120, 60%, ${80 - percent * 0.5}%), hsl(120, 70%, ${60 - percent * 0.3}%))`;
+  }
+
+  if(bar.classList.contains('under-bar')) {
+    // Красный цвет от светлого (низкий %) к насыщенному (высокий %)
+    bar.style.background = `linear-gradient(45deg, hsl(0, 70%, ${85 - percent * 0.5}%), hsl(0, 80%, ${60 - percent * 0.3}%))`;
+  }
+});
+</script>
+<table class="summary-stats-table">
+    <thead>
+        <tr>
+            <th>TEAM</th>
+            <th>Last 10 Under/Over</th>
+            <th>Last 5 Under/Over</th>
+            <th>Avg. 10</th>
+            <th>Avg. 5</th>
+            <th>Last 10 H2H U/O</th>
+            <th>Last 5 H2H U/O</th>
+            <th>Avg. H2H 10</th>
+            <th>Avg. H2H 5</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for team, stats_10, stats_5, h2h_10, h2h_5 in [
+            (team1, stats_team1_last_10, stats_team1_last_5, stats_h2h_last_10, stats_h2h_last_5),
+            (team2, stats_team2_last_10, stats_team2_last_5, stats_h2h_last_10, stats_h2h_last_5)
+        ] %}
+        <tr>
+            <td><strong>{{ team }}</strong></td>
+
+            <td>
+                {% if stats_10 %}
+                    {% for league, data in stats_10.items() %}
+                        {{ league }}: {{ data.under_equal_mid_total }}/{{ data.over_mid_total }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if stats_5 %}
+                    {% for league, data in stats_5.items() %}
+                        {{ league }}: {{ data.under_equal_mid_total }}/{{ data.over_mid_total }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if stats_10 %}
+                    {% for league, data in stats_10.items() %}
+                        {{ league }}: {{ data.average_total_points }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if stats_5 %}
+                    {% for league, data in stats_5.items() %}
+                        {{ league }}: {{ data.average_total_points }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if h2h_10 %}
+                    {% for league, data in h2h_10.items() %}
+                        {{ league }}: {{ data.under_equal_mid_total }}/{{ data.over_mid_total }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if h2h_5 %}
+                    {% for league, data in h2h_5.items() %}
+                        {{ league }}: {{ data.under_equal_mid_total }}/{{ data.over_mid_total }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if h2h_10 %}
+                    {% for league, data in h2h_10.items() %}
+                        {{ league }}: {{ data.average_total_points }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if h2h_5 %}
+                    {% for league, data in h2h_5.items() %}
+                        {{ league }}: {{ data.average_total_points }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 <div class="statistics-section">
 
     <!-- Голы -->

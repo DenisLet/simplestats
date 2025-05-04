@@ -286,6 +286,8 @@ th {
         </div>
     </form>
 <hr>
+
+    {{ streak_table }}
 <div class="statistics-section">
 
     <!-- Голы -->
@@ -596,6 +598,9 @@ th {
     <input type="text" id="ht-score-filter" placeholder="0-0" maxlength="5" style="width: 5ch;">
     <button onclick="filterByHalfTimeScore()">Filter</button>
 </div>
+
+
+
 <div id="stats-container"></div>
 
 {% if matches_team1 %}

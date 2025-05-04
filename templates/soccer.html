@@ -307,6 +307,271 @@ th {
         </div>
     </form>
 <hr>
+
+<div class="predictions-container">
+  {% for league, data in (predictions or {}).items() %}
+  <div class="league-prediction-card">
+    <h4>{{ league }}</h4>
+    <div class="bar-container">
+      <div class="bar over-bar" data-percent="{{ data.percent_over }}" style="width: {{ data.percent_over }}%;">
+        {% if data.percent_over >= 20 %}
+          <span>{{ data.percent_over }}%</span>
+        {% endif %}
+      </div>
+      <div class="bar under-bar" data-percent="{{ data.percent_under }}" style="width: {{ data.percent_under }}%;">
+        {% if data.percent_under >= 20 %}
+          <span>{{ data.percent_under }}%</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="bar-labels">
+      {% if data.percent_over < 20 %}
+        <span class="label-over">Over: {{ data.percent_over }}%</span>
+      {% endif %}
+      {% if data.percent_under < 20 %}
+        <span class="label-under">Under: {{ data.percent_under }}%</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<style>
+.predictions-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px auto;
+}
+
+.league-prediction-card {
+  width: 250px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  padding: 10px;
+  transition: transform 0.2s ease;
+}
+
+.league-prediction-card:hover {
+  transform: translateY(-3px);
+}
+
+.league-prediction-card h4 {
+  text-align: center;
+  margin-bottom: 10px;
+  color: #444;
+  font-size: 15px;
+}
+
+.bar-container {
+  display: flex;
+  overflow: hidden;
+  border-radius: 20px;
+  height: 25px;
+  background: #eaeaea;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  position: relative;
+  animation: fill-bar 1.5s ease-in-out forwards;
+}
+
+.bar span {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.bar-labels {
+  margin-top: 5px;
+  text-align: center;
+  font-size: 12px;
+  color: #555;
+}
+
+.label-over {
+  color: #27ae60;
+  margin-right: 10px;
+}
+
+.label-under {
+  color: #e73827;
+}
+
+@keyframes fill-bar {
+  from { width: 0; }
+  to { width: var(--final-width); }
+}
+</style>
+
+<script>
+document.querySelectorAll('.bar').forEach(bar => {
+  const percent = parseFloat(bar.dataset.percent);
+  bar.style.setProperty('--final-width', bar.style.width);
+
+  if(bar.classList.contains('over-bar')) {
+    // динамический градиент от светлого к насыщенному зелёному
+    bar.style.background = `linear-gradient(45deg, hsl(120, 60%, ${80 - percent * 0.5}%), hsl(120, 70%, ${60 - percent * 0.3}%))`;
+  }
+
+  if(bar.classList.contains('under-bar')) {
+    // динамический градиент от светло-красного к насыщенному
+    bar.style.background = `linear-gradient(45deg, hsl(0, 70%, ${85 - percent * 0.5}%), hsl(0, 80%, ${60 - percent * 0.3}%))`;
+  }
+});
+</script>
+<style>
+  /* Чтобы переключатель всегда был по центру */
+  #switcher {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  #switcher button {
+    width: 2rem;
+  }
+  #switcher span {
+    min-width: 8rem;
+    text-align: center;
+    font-weight: bold;
+  }
+</style>
+
+<div id="switcher">
+  <button id="prevBtn" class="btn btn-outline-primary">&larr;</button>
+  <span id="tableLabel"></span>
+  <button id="nextBtn" class="btn btn-outline-primary">&rarr;</button>
+</div>
+
+<div id="tableContainer"></div>
+
+<script>
+// Собираем «слайды»
+const tabs = [
+  { label: "Results",      html: {{ streak_table|tojson }} },
+  { label: "Corners",      html: {{ corners_table|tojson }} },
+  { label: "Yellow Cards", html: {{ yc_table|tojson }} }
+];
+
+let current = 0;
+const labelEl = document.getElementById('tableLabel');
+const container = document.getElementById('tableContainer');
+
+function renderTab() {
+  labelEl.textContent = tabs[current].label;
+  container.innerHTML = tabs[current].html;
+}
+
+// Цикличная навигация
+document.getElementById('prevBtn').addEventListener('click', () => {
+  current = (current - 1 + tabs.length) % tabs.length;
+  renderTab();
+});
+document.getElementById('nextBtn').addEventListener('click', () => {
+  current = (current + 1) % tabs.length;
+  renderTab();
+});
+
+// Инициализация
+renderTab();
+</script>
+<table class="summary-stats-table">
+    <thead>
+        <tr>
+            <th>TEAM</th>
+            <th>Last 10 U/O 2.5</th>
+            <th>Last 5 U/O 2.5</th>
+            <th>Avg. Goals 10</th>
+            <th>Avg. Goals 5</th>
+            <th>Last 10 H2H U/O 2.5</th>
+            <th>Last 5 H2H U/O 2.5</th>
+            <th>Avg. H2H Goals 10</th>
+            <th>Avg. H2H Goals 5</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for team, stats_10, stats_5, h2h_10, h2h_5 in [
+            (team1, stats_team1_last_10, stats_team1_last_5, stats_h2h_last_10, stats_h2h_last_5),
+            (team2, stats_team2_last_10, stats_team2_last_5, stats_h2h_last_10, stats_h2h_last_5)
+        ] %}
+        <tr>
+            <td><strong>{{ team }}</strong></td>
+
+            <td>
+                {% if stats_10 %}
+                    {% for league, data in stats_10.items() %}
+                        {{ league }}: {{ data.under_equal_25 }}/{{ data.over_25 }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if stats_5 %}
+                    {% for league, data in stats_5.items() %}
+                        {{ league }}: {{ data.under_equal_25 }}/{{ data.over_25 }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if stats_10 %}
+                    {% for league, data in stats_10.items() %}
+                        {{ league }}: {{ data.average_total_goals }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if stats_5 %}
+                    {% for league, data in stats_5.items() %}
+                        {{ league }}: {{ data.average_total_goals }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if h2h_10 %}
+                    {% for league, data in h2h_10.items() %}
+                        {{ league }}: {{ data.under_equal_25 }}/{{ data.over_25 }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if h2h_5 %}
+                    {% for league, data in h2h_5.items() %}
+                        {{ league }}: {{ data.under_equal_25 }}/{{ data.over_25 }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if h2h_10 %}
+                    {% for league, data in h2h_10.items() %}
+                        {{ league }}: {{ data.average_total_goals }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+            <td>
+                {% if h2h_5 %}
+                    {% for league, data in h2h_5.items() %}
+                        {{ league }}: {{ data.average_total_goals }}<br>
+                    {% endfor %}
+                {% else %}-{% endif %}
+            </td>
+
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 <div class="statistics-section">
 
     <!-- Голы -->

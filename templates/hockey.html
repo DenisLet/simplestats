@@ -309,6 +309,102 @@ th {
         </div>
     </form>
 <hr>
+    {% if streak_table %}
+      <div class="mt-4">
+        {{ streak_table }}
+      </div>
+    {% else %}
+      <p>Нет данных для построения серии.</p>
+    {% endif %}
+<table class="summary-stats-table">
+  <thead>
+    <tr>
+      <th>TEAM</th>
+      <th>Last 10 U/O 5.5</th>
+      <th>Last 5 U/O 5.5</th>
+      <th>Avg. Goals 10</th>
+      <th>Avg. Goals 5</th>
+      <th>Last 10 H2H U/O 5.5</th>
+      <th>Last 5 H2H U/O 5.5</th>
+      <th>Avg. H2H Goals 10</th>
+      <th>Avg. H2H Goals 5</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for team, stats10, stats5, h2h10, h2h5 in [
+      (team1, stats_team1_10, stats_team1_5, stats_h2h_10, stats_h2h_5),
+      (team2, stats_team2_10, stats_team2_5, stats_h2h_10, stats_h2h_5)
+    ] %}
+    <tr>
+      <td><strong>{{ team or '-' }}</strong></td>
+
+      <td>
+        {% if stats10 %}
+          {% for league, d in stats10.items() %}
+            {{ league }}: {{ d.under_equal_55 }}/{{ d.over_55 }}<br>
+          {% endfor %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        {% if stats5 %}
+          {% for league, d in stats5.items() %}
+            {{ league }}: {{ d.under_equal_55 }}/{{ d.over_55 }}<br>
+          {% endfor %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        {% if stats10 %}
+          {% for league, d in stats10.items() %}
+            {{ league }}: {{ d.average_total_goals }}<br>
+          {% endfor %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        {% if stats5 %}
+          {% for league, d in stats5.items() %}
+            {{ league }}: {{ d.average_total_goals }}<br>
+          {% endfor %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        {% if h2h10 %}
+          {% for league, d in h2h10.items() %}
+            {{ league }}: {{ d.under_equal_55 }}/{{ d.over_55 }}<br>
+          {% endfor %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        {% if h2h5 %}
+          {% for league, d in h2h5.items() %}
+            {{ league }}: {{ d.under_equal_55 }}/{{ d.over_55 }}<br>
+          {% endfor %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        {% if h2h10 %}
+          {% for league, d in h2h10.items() %}
+            {{ league }}: {{ d.average_total_goals }}<br>
+          {% endfor %}
+        {% else %}-{% endif %}
+      </td>
+
+      <td>
+        {% if h2h5 %}
+          {% for league, d in h2h5.items() %}
+            {{ league }}: {{ d.average_total_goals }}<br>
+          {% endfor %}
+        {% else %}-{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 <div class="statistics-section">
 
     <!-- Голы -->

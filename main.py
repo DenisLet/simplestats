@@ -13,12 +13,43 @@ import threading
 from fake_useragent import UserAgent
 import random
 from datetime import timedelta
+from collections import defaultdict
+from flask import (
+    Flask, request, render_template, render_template_string,
+    url_for, redirect, abort, send_file
+)
+from series_soccer import (
+    streak_table_html_soc, StreakAnalyzer, td_green          # NEW
+)
+import pandas as pd
+from textwrap import wrap
+from series_corners_halves  import corners_streak_table_html,CornersAnalyzer
+from series_yellow_total import yc_streak_table_html, YellowAnalyzer
+from markupsafe import Markup
+from series_hockey import streak_table_html, td_green, StreakAnalyzerHOC
+from series_handball import streak_table_html_hb as streak_table_hb, td_green as td_green_hb
+from series_basketball import streak_table_html_bb, td_green, StreakAnalyzerBB
 
 app = Flask(__name__)
 DATABASE_URL = "postgresql+psycopg2://admin:123456er@127.0.0.1:5432/statix"
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 session = Session()
+
+DB_URI = "postgresql://admin:123456er@localhost:5432/statix"
+STREAK_CACHE = {}        # кэш для страницы деталей
+# ---------- окраска ячейки (можно использовать готовый td_green) ----------
+td_grad = td_green
+
+CORNER_CACHE  = {}   # total-corners
+YC_CACHE = {}
+STREAK_CACHE_HOC = {}
+STREAK_BB_CACHE = {}
+def td_grad(cur, mx):
+    if mx == 0:
+        return f'<td>{cur}</td>'
+    alpha = 0.05 + 0.95 * min(cur / mx, 1) if cur else 0
+    return f'<td style="background:rgba(0,200,0,{alpha:.2f});">{cur}</td>'
 
 @app.route("/soccer", methods=["GET", "POST"])
 def soccer():
@@ -37,12 +68,24 @@ def soccer():
     yc_main2 = None
     form_data = {}
     autocomplete = False
+    streak_table = None
+    corners_table = None
+    yc_table = None
+    def td_grad(cur, mx):
+        if mx == 0:
+            return f'<td>{cur}</td>'
+        alpha = 0.05 + 0.95 * min(cur / mx, 1) if cur else 0
+        return f'<td style="background:rgba(0,200,0,{alpha:.2f});">{cur}</td>'
 
     if request.method == "POST":
 
         selected_bookmaker = request.form.get("bookmaker")
         team1 = request.form.get("team1")
         team2 = request.form.get("team2")
+        if team1 == '':
+            team1 = 'No team'
+        if team2 == '':
+            team2 = 'No team'
 
         from_date = request.form.get("from_date", "2013-01-01")
         from_date = datetime.strptime(from_date, "%Y-%m-%d")
@@ -54,6 +97,31 @@ def soccer():
         opponent_score = request.form.get('opponent_score', '')
         team2_score = request.form.get('team2_score', '')
         opponent2_score = request.form.get('opponent2_score', '')
+
+        # ── 2. в POST-части /soccer  (после получения team1/team2) ───────────────
+        teams = [t.strip() for t in (team1, team2) if t.strip()]
+        streak_table, streak_data = streak_table_html_soc(
+            teams, DB_URI, td_grad, link_endpoint="soccer_details")
+
+        corners_table, corner_meta = corners_streak_table_html(
+            teams, DB_URI, td_grad, link_endpoint="corner_series"  # ← здесь
+        )
+
+        yc_table, yc_meta = yc_streak_table_html(
+            teams, DB_URI, td_grad, link_endpoint="yc_series"
+        )
+
+        STREAK_CACHE.clear()
+        STREAK_CACHE.update(streak_data)
+
+        YC_CACHE.clear()
+        YC_CACHE.update(yc_meta)
+
+        CORNER_CACHE.clear()
+        CORNER_CACHE.update(corner_meta)
+
+
+        # -----------------------------------------
 
         def validate_int(value):
             if value == "":
@@ -336,6 +404,147 @@ def soccer():
         #     corners_main2 = calculate_corners_statistics(matches_team2)
         #     yc_main2 = calculate_yellow_cards_statistics(matches_team2)
 
+    def analyze_last_n_matches_soccer(team, limit=10):
+            league_stats = {}
+            team_leagues = session.query(SoccerMain.league_name).filter(
+                or_(SoccerMain.team_home == team, SoccerMain.team_away == team)
+            ).distinct().all()
+
+            for league_tuple in team_leagues:
+                league = league_tuple[0]
+
+                recent_matches = session.query(SoccerMain).filter(
+                    SoccerMain.league_name == league,
+                    or_(SoccerMain.team_home == team, SoccerMain.team_away == team)
+                ).order_by(desc(SoccerMain.match_date)).limit(limit).all()
+
+                if not recent_matches:
+                    continue
+
+                over_25 = sum(1 for m in recent_matches if (m.home_score_ft + m.away_score_ft) > 2.5)
+                under_equal_25 = len(recent_matches) - over_25
+                total_goals = sum(m.home_score_ft + m.away_score_ft for m in recent_matches)
+
+                league_stats[league] = {
+                    "average_total_goals": round(total_goals / len(recent_matches), 2),
+                    "over_25": over_25,
+                    "under_equal_25": under_equal_25,
+                    "total_games": len(recent_matches)
+                }
+
+            return league_stats
+
+    def analyze_last_n_h2h_matches_soccer(team1, team2, limit=10):
+            league_stats = {}
+            leagues = session.query(SoccerMain.league_name).filter(
+                or_(
+                    and_(SoccerMain.team_home == team1, SoccerMain.team_away == team2),
+                    and_(SoccerMain.team_home == team2, SoccerMain.team_away == team1)
+                )
+            ).distinct().all()
+
+            for league_tuple in leagues:
+                league = league_tuple[0]
+
+                recent_matches = session.query(SoccerMain).filter(
+                    SoccerMain.league_name == league,
+                    or_(
+                        and_(SoccerMain.team_home == team1, SoccerMain.team_away == team2),
+                        and_(SoccerMain.team_home == team2, SoccerMain.team_away == team1)
+                    )
+                ).order_by(desc(SoccerMain.match_date)).limit(limit).all()
+
+                if not recent_matches:
+                    continue
+
+                over_25 = sum(1 for m in recent_matches if (m.home_score_ft + m.away_score_ft) > 2.5)
+                under_equal_25 = len(recent_matches) - over_25
+                total_goals = sum(m.home_score_ft + m.away_score_ft for m in recent_matches)
+
+                league_stats[league] = {
+                    "average_total_goals": round(total_goals / len(recent_matches), 2),
+                    "over_25": over_25,
+                    "under_equal_25": under_equal_25,
+                    "total_games": len(recent_matches)
+                }
+
+            return league_stats
+
+    stats_team1_last_10 = analyze_last_n_matches_soccer(team1, limit=10) if team1 else None
+    stats_team1_last_5 = analyze_last_n_matches_soccer(team1, limit=5) if team1 else None
+
+    stats_team2_last_10 = analyze_last_n_matches_soccer(team2, limit=10) if team2 else None
+    stats_team2_last_5 = analyze_last_n_matches_soccer(team2, limit=5) if team2 else None
+
+    stats_h2h_last_10 = analyze_last_n_h2h_matches_soccer(team1, team2, limit=10) if team1 and team2 else None
+    stats_h2h_last_5 = analyze_last_n_h2h_matches_soccer(team1, team2, limit=5) if team1 and team2 else None
+
+    print(stats_team1_last_10)
+    print(stats_team1_last_5)
+    print(stats_team2_last_10)
+    print(stats_team2_last_5)
+    print(stats_h2h_last_10)
+    print(stats_h2h_last_5)
+    print(goasl_main1)
+    print(goasl_main2)
+
+    def calculate_over_under_prediction_soccer(
+            stats_team1_10, stats_team1_5,
+            stats_team2_10, stats_team2_5,
+            h2h_stats_10, h2h_stats_5,
+            goals_stats1, goals_stats2
+    ):
+        leagues = set(stats_team1_10.keys()) | set(stats_team1_5.keys()) | \
+                  set(stats_team2_10.keys()) | set(stats_team2_5.keys()) | \
+                  set(h2h_stats_10.keys()) | set(h2h_stats_5.keys())
+
+        predictions = {}
+
+        for league in leagues:
+            total_over = 0
+            total_games = 0
+
+            # Используем over_25 для команд и h2h
+            for stats in [stats_team1_10, stats_team1_5, stats_team2_10, stats_team2_5, h2h_stats_10, h2h_stats_5]:
+                if league in stats:
+                    total_over += stats[league]['over_25']
+                    total_games += stats[league]['total_games']
+
+            # Добавляем данные goals_stats1 (over_2_5)
+            if league in goals_stats1:
+                total_over += goals_stats1[league]['over_2_5']
+                total_games += goals_stats1[league]['total_matches']
+
+            # Добавляем данные goals_stats2 (over_2_5)
+            if league in goals_stats2:
+                total_over += goals_stats2[league]['over_2_5']
+                total_games += goals_stats2[league]['total_matches']
+
+            if total_games > 0:
+                percent_over = (total_over / total_games) * 100
+                percent_under = 100 - percent_over
+            else:
+                percent_over = percent_under = None
+
+            predictions[league] = {
+                'percent_over': round(percent_over, 2) if percent_over is not None else '-',
+                'percent_under': round(percent_under, 2) if percent_under is not None else '-'
+            }
+
+        return predictions
+
+    if request.method == "POST":
+        predictions = calculate_over_under_prediction_soccer(
+            stats_team1_last_10, stats_team1_last_5,
+            stats_team2_last_10, stats_team2_last_5,
+            stats_h2h_last_10, stats_h2h_last_5,
+            goasl_main1, goasl_main2
+        )
+    else:
+        predictions = {}
+
+    print(predictions)
+    print(streak_table)
     return render_template(
         "soccer.html",
         selected_bookmaker=selected_bookmaker,
@@ -344,15 +553,324 @@ def soccer():
         errors=errors,
         matches_team1=matches_team1,
         matches_team2=matches_team2,
-        form_data = data,
+        form_data=data,
         corners_main1=corners_main1,
         goasl_main1=goasl_main1,
         yc_main1=yc_main1,
         corners_main2=corners_main2,
         goasl_main2=goasl_main2,
         yc_main2=yc_main2,
-        autocomplete=autocomplete
+        autocomplete=autocomplete,
+
+        # статистика последних матчей команд отдельно
+        stats_team1_last_10=stats_team1_last_10,
+        stats_team1_last_5=stats_team1_last_5,
+        stats_team2_last_10=stats_team2_last_10,
+        stats_team2_last_5=stats_team2_last_5,
+
+        # статистика личных встреч
+        stats_h2h_last_10=stats_h2h_last_10,
+        stats_h2h_last_5=stats_h2h_last_5,
+        predictions=predictions,
+        streak_table=streak_table,
+        corners_table=corners_table,
+        yc_table=yc_table
     )
+
+
+@app.route("/soccer/details")
+def soccer_details():
+    team   = request.args.get("team")
+    league = request.args.get("league")
+    if not (team and league):
+        return redirect(url_for("soccer"))
+
+    # если перешли напрямую, а кэш пуст – пересчитаем одну команду
+    if team not in STREAK_CACHE:
+        _, data = streak_table_html([team], DB_URI, td_grad, link_endpoint="soccer_details")
+        STREAK_CACHE.update(data)
+
+    meta = STREAK_CACHE[team]
+
+    # ---------- строим «карточки» по 4 в ряд ----------
+    cards_html = []
+    for flag, short in StreakAnalyzer.FLAG_NAMES.items():
+        cur = meta[flag]['current'].get(league, 0)
+        mx  = meta[flag]['max'].get(league, 0)
+        dist    = meta[flag]['distribution'].get(league, {})
+        longest = meta[flag]['longest'].get(league, [])
+
+        # таблица распределения длин
+        dist_html = ""
+        if dist:
+            df_dist = pd.DataFrame(
+                        sorted(dist.items(), key=lambda x: int(x[0])),
+                        columns=['Длина', 'Серий'])
+            dist_html = df_dist.to_html(index=False,
+                                        classes="table table-bordered table-sm table-striped")
+
+        # таблица самых длинных
+        long_html = ""
+        if longest:
+            df_long = (pd.DataFrame(longest)
+                       [['start', 'end', 'length']]
+                       .rename(columns={'start':'Начало','end':'Конец','length':'Длина'}))
+            long_html = df_long.to_html(index=False,
+                                        classes="table table-bordered table-sm table-striped")
+
+        card = (
+            f"<div class='col-md-3 mb-4'>"
+            f"<h6 class='text-center'>{short}<br>"
+            f"<small>текущая {cur} / рекорд {mx}</small></h6>"
+            f"{dist_html}{long_html}</div>"
+        )
+        cards_html.append(card)
+
+    # группируем по 4 карточки в ряд
+    rows = []
+    for i in range(0, len(cards_html), 4):
+        rows.append("<div class='row'>" + ''.join(cards_html[i:i+4]) + "</div>")
+
+    # ---------- итоговая страница ----------
+    full_html = """
+    <!doctype html><html lang="ru"><head><meta charset="utf-8">
+    <title>Series | {team} – {league}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      body{{padding:20px;}}
+      table{{font-size:.75rem;white-space:nowrap;}}
+      th,td{{text-align:center;vertical-align:middle;}}
+      .wrapper{{overflow-x:auto;}}
+    </style></head><body>
+    <div class="container-fluid">
+      <a class="btn btn-sm btn-secondary mb-3" href="{back}">← Назад</a>
+      <h3>{team} — {league}</h3>
+      <div class="wrapper">{rows}</div>
+    </div></body></html>
+    """.format(team=team, league=league,
+               back=url_for("soccer"), rows=''.join(rows))
+
+    return full_html
+
+
+@app.route("/corner_series")
+def corner_series():
+    team   = request.args.get("team")
+    league = request.args.get("league")
+    flag   = request.args.get("flag")          # может быть None
+
+    if not (team and league):
+        return redirect(url_for("soccer"))
+
+    # ---------- если кеш пуст – пересчитываем одну команду ----------
+    if team not in CORNER_CACHE:
+        _, meta = corners_streak_table_html([team], DB_URI, td_grad)
+        CORNER_CACHE.update(meta)
+
+    meta_team = CORNER_CACHE[team]
+
+    # ░░░░░ 1) ЕСТЬ flag  →  страница конкретной серии ░░░░░
+    if flag:
+        if flag not in meta_team:
+            return f"Unknown flag: {flag}", 404
+
+        cur   = meta_team[flag]['current'].get(league, 0)
+        mx    = meta_team[flag]['max'].get(league, 0)
+        dist  = meta_team[flag]['distribution'].get(league, {})
+        # полный список
+        matches  = CornersAnalyzer(DB_URI)._load([team])
+        flags_df = CornersAnalyzer._flags(matches, team)
+        full_hist = CornersAnalyzer._hist(flags_df, flag)
+        full_hist = full_hist[full_hist.league_name == league]\
+                        .rename(columns={'start':'Начало',
+                                         'end':'Конец',
+                                         'length':'Длина'})
+
+        dist_html = (pd.DataFrame(sorted(dist.items(), key=lambda x: int(x[0])),
+                                  columns=['Длина','Серий'])
+                     .to_html(index=False,
+                              classes="table table-bordered table-sm mb-3")) if dist else ""
+
+        full_html = full_hist.to_html(index=False,
+                                      classes="table table-bordered table-sm table-striped")
+
+        flag_human = CornersAnalyzer.FLAG_NAMES.get(flag, flag)
+
+        return f"""<!doctype html><html lang="ru"><head>
+<meta charset="utf-8">
+<title>{team} – {league} – {flag_human}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>body{{padding:20px;}} table{{font-size:.8rem;white-space:nowrap;}}</style>
+</head><body>
+  <a class="btn btn-sm btn-secondary mb-3"
+     href="{url_for('corner_series', team=team, league=league)}">← Все пороги</a>
+  <h4>{team} — {league}</h4>
+  <h5>{flag_human} <small class="text-muted">(текущая {cur} / рекорд {mx})</small></h5>
+  {dist_html}
+  <h6>Полный список серий</h6>
+  <div class="wrapper">{full_html}</div>
+</body></html>"""
+
+    # ░░░░░ 2) flag отсутствует → карточки всех порогов ░░░░░
+    cards = []
+    for f_key, short in CornersAnalyzer.FLAG_NAMES.items():
+        cur = meta_team[f_key]['current'].get(league, 0)
+        mx  = meta_team[f_key]['max'].get(league, 0)
+        dist = meta_team[f_key]['distribution'].get(league, {})
+        longest = meta_team[f_key]['longest'].get(league, {})
+
+        dist_html = (pd.DataFrame(sorted(dist.items(), key=lambda x: int(x[0])),
+                                  columns=['Длина','Серий'])
+                     .to_html(index=False,
+                              classes="table table-bordered table-sm")) if dist else ""
+
+        long_html = ""
+        if longest:
+            df_long = (pd.DataFrame(longest)
+                       [['start','end','length']]
+                       .rename(columns={'start':'Начало',
+                                        'end':'Конец',
+                                        'length':'Длина'}))
+            long_html = df_long.to_html(index=False,
+                                        classes="table table-bordered table-sm")
+
+        link = url_for("corner_series", team=team, league=league, flag=f_key)
+        cards.append(
+            f"<div class='col-md-3 mb-4'>"
+            f"<h6 class='text-center'><a href='{link}'>{short}</a><br>"
+            f"<small>текущая {cur} / рекорд {mx}</small></h6>"
+            f"{dist_html}{long_html}</div>"
+        )
+
+    rows = ["<div class='row'>" + ''.join(cards[i:i+4]) + "</div>"
+            for i in range(0, len(cards), 4)]
+
+    return f"""<!doctype html><html lang="ru"><head>
+<meta charset="utf-8">
+<title>Corners | {team} – {league}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>body{{padding:20px;}} table{{font-size:.75rem;white-space:nowrap;}}</style>
+</head><body>
+  <a class="btn btn-sm btn-secondary mb-3"
+     href="{url_for('soccer')}">← Назад</a>
+  <h3>{team} — {league}</h3>
+  <div class="wrapper">{''.join(rows)}</div>
+</body></html>"""
+
+
+
+@app.route("/yc_series")
+def yc_series():
+    team   = request.args.get("team")
+    league = request.args.get("league")
+    flag   = request.args.get("flag")   # например 'yc_gt2_5'
+
+    # если нет — кидаем обратно на /soccer
+    if not (team and league):
+        return redirect(url_for("soccer"))
+
+    # если кеш пуст — досчитаем
+    if team not in YC_CACHE:
+        # передаём link_endpoint на этот же маршрут
+        _, data = yc_streak_table_html([team], DB_URI, td_grad,
+                                       link_endpoint="yc_series")
+        YC_CACHE.update(data)
+
+    meta = YC_CACHE[team]
+
+    # --- 1) подробная страница, когда flag задан ---
+    if flag:
+        if flag not in meta:
+            return f"Unknown flag: {flag}", 404
+
+        cur   = meta[flag]['current'].get(league, 0)
+        mx    = meta[flag]['max'].get(league, 0)
+        dist  = meta[flag]['distribution'].get(league, {})
+        longest = meta[flag]['longest'].get(league, [])
+
+        # распределение
+        dist_html = ""
+        if dist:
+            df_dist = pd.DataFrame(sorted(dist.items(), key=lambda x: int(x[0])),
+                                   columns=['Длина','Серий'])
+            dist_html = df_dist.to_html(index=False,
+                                        classes="table table-bordered table-sm mb-3")
+
+        # полный список серий
+        # переиспользуем Analyzer чтобы заново построить all runs
+        all_matches = YellowAnalyzer(DB_URI)._load([team])
+        flags_df    = YellowAnalyzer._flags(all_matches, team)
+        full_hist   = YellowAnalyzer._hist(flags_df, flag)
+        full_hist   = full_hist[full_hist.league_name == league] \
+                              .rename(columns={'start':'Начало',
+                                               'end':'Конец',
+                                               'length':'Длина'})
+        full_html = full_hist.to_html(index=False,
+                                      classes="table table-bordered table-sm table-striped")
+
+        title = YellowAnalyzer.FLAG_NAMES[flag]
+        return f"""
+        <!doctype html><html lang="ru"><head><meta charset="utf-8">
+        <title>{team} — {league} — {title}</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>body{{padding:20px;}}table{{font-size:.8rem;white-space:nowrap;}}</style>
+        </head><body>
+          <a class="btn btn-sm btn-secondary mb-3" href="{url_for('yc_series',team=team,league=league)}">← Все YC-пороги</a>
+          <h4>{team} — {league}</h4>
+          <h5>{title} <small class="text-muted">(текущая {cur} / рекорд {mx})</small></h5>
+          {dist_html}
+          <h6>Полный список серий</h6>
+          <div class="wrapper">{full_html}</div>
+        </body></html>
+        """
+
+    # --- 2) карточки всех флагов (без flag) ---
+    cards = []
+    for f, short in YellowAnalyzer.FLAG_NAMES.items():
+        cur = meta[f]['current'].get(league, 0)
+        mx  = meta[f]['max'].get(league, 0)
+        dist = meta[f]['distribution'].get(league, {})
+        longest = meta[f]['longest'].get(league, [])
+
+        # dist и longest как в soccer_details
+        dist_html = ""
+        if dist:
+            df_dist = pd.DataFrame(sorted(dist.items(), key=lambda x: int(x[0])),
+                                   columns=['Длина','Серий'])
+            dist_html = df_dist.to_html(index=False,
+                                        classes="table table-bordered table-sm table-striped")
+        long_html = ""
+        if longest:
+            df_long = (pd.DataFrame(longest)
+                       [['start','end','length']]
+                       .rename(columns={'start':'Начало','end':'Конец','length':'Длина'}))
+            long_html = df_long.to_html(index=False,
+                                        classes="table table-bordered table-sm table-striped")
+
+        # ссылка на конкретный flag
+        link = url_for("yc_series", team=team, league=league, flag=f)
+        cards.append(
+          f"<div class='col-md-3 mb-4'>"
+          f"<h6 class='text-center'><a href='{link}'>{short}</a><br>"
+          f"<small>текущая {cur} / рекорд {mx}</small></h6>"
+          f"{dist_html}{long_html}</div>"
+        )
+
+    # группируем по 4
+    rows = [ "<div class='row'>" + "".join(cards[i:i+4]) + "</div>"
+             for i in range(0, len(cards), 4) ]
+
+    return f"""
+    <!doctype html><html lang="ru"><head><meta charset="utf-8">
+    <title>YC Series | {team} — {league}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>body{{padding:20px;}}table{{font-size:.75rem;white-space:nowrap;}}</style>
+    </head><body>
+      <a class="btn btn-sm btn-secondary mb-3" href="{url_for('soccer')}">← Назад</a>
+      <h3>{team} — {league}</h3>
+      <div class="wrapper">{''.join(rows)}</div>
+    </body></html>
+    """
 
 def calculate_goals_statistics(matches, team, selected_bookmaker):
     """
@@ -674,6 +1192,7 @@ def hockey():
     hc_team2 = None
     book_source = XbetOddsHoc
     sub_source = HockeyMain.xbet_odds_hoc
+    streak_table = None
     if request.method == "POST":
 
         selected_bookmaker = request.form.get("bookmaker")
@@ -690,6 +1209,15 @@ def hockey():
         team2_score = request.form.get('team2_score', '')
         opponent2_score = request.form.get('opponent2_score', '')
 
+        teams = [t.strip() for t in (team1, team2) if t and t.strip()]
+        streak_table, streak_meta = streak_table_html(
+            teams,
+            DB_URI,
+            td_green,
+            link_endpoint="hockey_details"  # ← именно так
+        )
+        STREAK_CACHE_HOC.clear()
+        STREAK_CACHE_HOC.update(streak_meta)
         def validate_int(value):
             if value == "":
                 return None
@@ -917,6 +1445,101 @@ def hockey():
             goasl_main2 = calculate_goals_statistics_hoc(matches_team2, selected_bookmaker)
             hc_team2 = calculate_handicap_statistics_hoc(matches_team2, team2, selected_bookmaker)
 
+    def analyze_last_n_matches_hockey(team, limit=10):
+        league_stats = {}
+        team_leagues = (
+            session.query(HockeyMain.league_name)
+            .filter(
+                or_(
+                    HockeyMain.team_home == team,
+                    HockeyMain.team_away == team
+                )
+            )
+            .distinct()
+            .all()
+        )
+
+        for (league,) in team_leagues:
+            recent = (
+                session.query(HockeyMain)
+                .filter(
+                    HockeyMain.league_name == league,
+                    or_(
+                        HockeyMain.team_home == team,
+                        HockeyMain.team_away == team
+                    )
+                )
+                .order_by(desc(HockeyMain.match_date))
+                .limit(limit)
+                .all()
+            )
+            if not recent:
+                continue
+
+            over_55 = sum(1 for m in recent if (m.home_score_ft + m.away_score_ft) > 5.5)
+            under_equal_55 = len(recent) - over_55
+            total_goals = sum(m.home_score_ft + m.away_score_ft for m in recent)
+
+            league_stats[league] = {
+                "average_total_goals": round(total_goals / len(recent), 2),
+                "over_55": over_55,
+                "under_equal_55": under_equal_55,
+                "total_games": len(recent),
+            }
+
+        return league_stats
+
+    def analyze_last_n_h2h_matches_hockey(team1, team2, limit=10):
+        league_stats = {}
+        pair_leagues = (
+            session.query(HockeyMain.league_name)
+            .filter(
+                or_(
+                    and_(HockeyMain.team_home == team1, HockeyMain.team_away == team2),
+                    and_(HockeyMain.team_home == team2, HockeyMain.team_away == team1)
+                )
+            )
+            .distinct()
+            .all()
+        )
+
+        for (league,) in pair_leagues:
+            recent = (
+                session.query(HockeyMain)
+                .filter(
+                    HockeyMain.league_name == league,
+                    or_(
+                        and_(HockeyMain.team_home == team1, HockeyMain.team_away == team2),
+                        and_(HockeyMain.team_home == team2, HockeyMain.team_away == team1)
+                    )
+                )
+                .order_by(desc(HockeyMain.match_date))
+                .limit(limit)
+                .all()
+            )
+            if not recent:
+                continue
+
+            over_55 = sum(1 for m in recent if (m.home_score_ft + m.away_score_ft) > 5.5)
+            under_equal_55 = len(recent) - over_55
+            total_goals = sum(m.home_score_ft + m.away_score_ft for m in recent)
+
+            league_stats[league] = {
+                "average_total_goals": round(total_goals / len(recent), 2),
+                "over_55": over_55,
+                "under_equal_55": under_equal_55,
+                "total_games": len(recent),
+            }
+
+        return league_stats
+
+    stats_team1_10 = analyze_last_n_matches_hockey(team1, limit=10) if team1 else {}
+    stats_team1_5  = analyze_last_n_matches_hockey(team1, limit=5)  if team1 else {}
+    stats_team2_10 = analyze_last_n_matches_hockey(team2, limit=10) if team2 else {}
+    stats_team2_5  = analyze_last_n_matches_hockey(team2, limit=5)  if team2 else {}
+    stats_h2h_10   = analyze_last_n_h2h_matches_hockey(team1, team2, limit=10) if team1 and team2 else {}
+    stats_h2h_5    = analyze_last_n_h2h_matches_hockey(team1, team2, limit=5)  if team1 and team2 else {}
+
 
     return render_template(
         "hockey.html",
@@ -931,8 +1554,96 @@ def hockey():
         goasl_main2=goasl_main2,
         hc_team1=hc_team1,
         hc_team2=hc_team2,
-        autocomplete=autocomplete
+        autocomplete=autocomplete,
+        stats_team1_10=stats_team1_10,
+        stats_team1_5=stats_team1_5,
+        stats_team2_10=stats_team2_10,
+        stats_team2_5=stats_team2_5,
+        stats_h2h_10=stats_h2h_10,
+        stats_h2h_5=stats_h2h_5,
+        streak_table=streak_table
     )
+
+@app.route("/hockey/details")
+def hockey_details():
+    team   = request.args.get("team", "").strip()
+    league = request.args.get("league", "").strip()
+    if not (team and league):
+        return redirect(url_for("hockey"))
+
+    # если кэш пуст для этой команды — пересчитаем мета и сохраним
+    if team not in STREAK_CACHE:
+        _, data = streak_table_html([team], DB_URI, td_green, link_endpoint="hockey_details")
+        STREAK_CACHE.update(data)
+
+    meta = STREAK_CACHE[team]
+
+    # собираем «карточки» по флагам
+    cards_html = []
+    for flag, short in StreakAnalyzerHOC.FLAG_NAMES.items():
+        cur     = meta[flag]['current'].get(league, 0)
+        mx      = meta[flag]['max'].    get(league, 0)
+        dist    = meta[flag]['distribution'].get(league, {})
+        longest = meta[flag]['longest'].   get(league, [])
+
+        # распределение длин серий
+        dist_html = ""
+        if dist:
+            df_dist = pd.DataFrame(
+                sorted(dist.items(), key=lambda x: int(x[0])),
+                columns=['Длина', 'Серий']
+            )
+            dist_html = df_dist.to_html(index=False,
+                                        classes="table table-bordered table-sm table-striped")
+
+        # самые длинные серии
+        long_html = ""
+        if longest:
+            df_long = (
+                pd.DataFrame(longest)
+                  [['start','end','length']]
+                  .rename(columns={'start':'Начало','end':'Конец','length':'Длина'})
+            )
+            long_html = df_long.to_html(index=False,
+                                        classes="table table-bordered table-sm table-striped")
+
+        card = (
+            f"<div class='col-md-3 mb-4'>"
+            f"<h6 class='text-center'>{short}<br>"
+            f"<small>текущая {cur} / рекорд {mx}</small></h6>"
+            f"{dist_html}{long_html}</div>"
+        )
+        cards_html.append(card)
+
+    # разбиваем на ряды по 4
+    rows = []
+    for i in range(0, len(cards_html), 4):
+        rows.append("<div class='row'>" + "".join(cards_html[i:i+4]) + "</div>")
+
+    # финальный HTML
+    full_html = f"""
+    <!doctype html>
+    <html lang="ru"><head><meta charset="utf-8">
+      <title>Hockey Series | {team} – {league}</title>
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+      <style>
+        body{{padding:20px;}}
+        table{{font-size:.75rem;white-space:nowrap;}}
+        th,td{{text-align:center;vertical-align:middle;}}
+        .wrapper{{overflow-x:auto;}}
+      </style>
+    </head>
+    <body>
+      <div class="container-fluid">
+        <a class="btn btn-sm btn-secondary mb-3" href="{url_for('hockey')}">← Назад</a>
+        <h3>{team} — {league}</h3>
+        <div class="wrapper">{''.join(rows)}</div>
+      </div>
+    </body>
+    </html>
+    """
+    return full_html
+
 
 @app.route("/search_hockey_teams", methods=["GET"])
 def search_hockey_teams():
@@ -1132,7 +1843,7 @@ def calculate_handicap_statistics_hoc(matches, team, selected_bookmaker):
 
     return dict(league_stats)
 
-
+HAND_CACHE = {}
 @app.route("/handball", methods=["GET", "POST"])
 def handball():
     selected_bookmaker = "1XBet"
@@ -1159,6 +1870,8 @@ def handball():
     mid_total_minus = 3
     hc_base = 0
     hc_vise = 0
+    streak_table = None
+    table= None
     if request.method == "POST":
 
         selected_bookmaker = request.form.get("bookmaker")
@@ -1176,6 +1889,13 @@ def handball():
         opponent2_score = request.form.get('opponent2_score', '')
         mid_total = request.form.get('mid_total', '')
 
+        teams = [t for t in (team1, team2) if t]
+        table, meta = streak_table_hb(
+            teams, DB_URI, td_green_hb,
+            link_endpoint="handball_details"  # обязательно совпадает с именем эндпоинта
+        )
+        HAND_CACHE.clear()
+        HAND_CACHE.update(meta)
 
         def validate_int(value):
             if value == "":
@@ -1443,8 +2163,74 @@ def handball():
         mid_total= int(mid_total),
         hc_base=hc_base,
         hc_vise=hc_vise,
-        autocomplete=autocomplete
+        autocomplete=autocomplete,
+        streak_table=table
     )
+
+
+@app.route("/handball/details")
+def handball_details():
+    team   = request.args.get("team", "").strip()
+    league = request.args.get("league", "").strip()
+    if not (team and league):
+        return redirect(url_for("handball"))
+
+    # если нет в кеше — пересчитаем
+    if team not in HAND_CACHE:
+        _, data = streak_table_html([team], DB_URI, td_green, link_endpoint="handball_details")
+        HAND_CACHE.update(data)
+
+    meta = HAND_CACHE[team]
+
+    # точно такую же логику, как в soccer_details/hockey_details:
+    cards = []
+    for flag, short in StreakAnalyzerHB.FLAG_NAMES.items():
+        cur     = meta[flag]['current'].get(league, 0)
+        mx      = meta[flag]['max'].    get(league, 0)
+        dist    = meta[flag]['distribution'].get(league, {})
+        longest = meta[flag]['longest'].   get(league, [])
+
+        # формируем HTML таблицы распределения и longest
+        dist_html = ""
+        if dist:
+            dfd = pd.DataFrame(sorted(dist.items(), key=lambda x: int(x[0])),
+                               columns=['Длина','Серий'])
+            dist_html = dfd.to_html(index=False,
+                                    classes="table table-sm table-bordered table-striped")
+
+        long_html = ""
+        if longest:
+            dfl = pd.DataFrame(longest)[['start','end','length']] \
+                             .rename(columns={'start':'Начало','end':'Конец','length':'Длина'})
+            long_html = dfl.to_html(index=False,
+                                    classes="table table-sm table-bordered table-striped")
+
+        cards.append(
+            f"<div class='col-md-3 mb-4'>"
+            f"<h6 class='text-center'>{short}<br><small>тек {cur} / рек {mx}</small></h6>"
+            f"{dist_html}{long_html}</div>"
+        )
+
+    rows = []
+    for i in range(0, len(cards), 4):
+        rows.append(f"<div class='row'>{''.join(cards[i:i+4])}</div>")
+
+    html_page = f"""
+    <!doctype html>
+    <html lang="ru"><head><meta charset="utf-8">
+      <title>Handball Series | {team} — {league}</title>
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+      <style>body{{padding:20px}}table{{font-size:.75rem;white-space:nowrap}}th,td{{text-align:center}}</style>
+    </head><body>
+      <div class="container-fluid">
+        <a class="btn btn-sm btn-secondary mb-3" href="{url_for('handball')}">← Назад</a>
+        <h3>{team} — {league}</h3>
+        <div class="wrapper">{''.join(rows)}</div>
+      </div>
+    </body></html>
+    """
+    return html_page
+
 
 @app.route("/search_handball_teams", methods=["GET"])
 def search_handball_teams():
@@ -1712,17 +2498,18 @@ def basketball():
     hc_team2 = None
     book_source = XbetOddsHb
     sub_source = None
-    mid_total = 160
+
+    # Дефолтные значения для отображения
+    displayed_mid_total = 160
     mid_total_plus = 4
     mid_total_minus = 4
     hc_base = 0
     hc_vise = 0
+    table_html = None
     if request.method == "POST":
-
         selected_bookmaker = request.form.get("bookmaker")
         team1 = request.form.get("team1")
         team2 = request.form.get("team2")
-
         from_date = request.form.get("from_date", "2013-01-01")
         from_date = datetime.strptime(from_date, "%Y-%m-%d")
         autocomplete = 'autocomplete-toggle' in request.form
@@ -1731,23 +2518,7 @@ def basketball():
         opponent_score = request.form.get('opponent_score', '')
         team2_score = request.form.get('team2_score', '')
         opponent2_score = request.form.get('opponent2_score', '')
-        mid_total = request.form.get('mid_total', '')
 
-
-
-        def validate_int(value):
-            if value == "":
-                return None
-            try:
-                return int(value)
-            except ValueError:
-                return None
-
-
-        if team1 and not isinstance(team1, str):
-            errors.append("Must be string.")
-        if team2 and not isinstance(team2, str):
-            errors.append("Must be string.")
 
 
         def validate_float(value):
@@ -1758,15 +2529,19 @@ def basketball():
             except ValueError:
                 return 0
 
+        # Сохраняем исходное число, пришедшее от пользователя
+        original_mid_total = validate_float(request.form.get("mid_total"))
+        mid_total_plus = validate_float(request.form.get("mid_total_plus"))
+        mid_total_minus = validate_float(request.form.get("mid_total_minus"))
+
+        # Прочие поля
         win_home_open = validate_float(request.form.get("win_home_open"))
         win_home_open_plus = validate_float(request.form.get("win_home_open_plus"))
         win_home_open_minus = validate_float(request.form.get("win_home_open_minus"))
         win_home_close = validate_float(request.form.get("win_home_close"))
         win_home_close_plus = validate_float(request.form.get("win_home_close_plus"))
         win_home_close_minus = validate_float(request.form.get("win_home_close_minus"))
-        mid_total = validate_float(request.form.get("mid_total"))
-        mid_total_plus = validate_float(request.form.get("mid_total_plus"))
-        mid_total_minus = validate_float(request.form.get("mid_total_minus"))
+
         to25_open = validate_float(request.form.get("to25_open"))
         to25_open_plus = validate_float(request.form.get("to25_open_plus"))
         to25_open_minus = validate_float(request.form.get("to25_open_minus"))
@@ -1774,33 +2549,37 @@ def basketball():
         to25_close_plus = validate_float(request.form.get("to25_close_plus"))
         to25_close_minus = validate_float(request.form.get("to25_close_minus"))
 
-        print(mid_total, 'kkkkkkkkkkkkkkkkkk')
-        print(mid_total == '')
-        if mid_total == 0:
-            mid_total = 160
-            mid_total_minus = 160
+        # Если original_mid_total == 0, то используем 160 для внутренних расчётов и отображения
+        # Но это не значит, что мы будем применять фильтр.
+        if original_mid_total == 0:
+            displayed_mid_total = 160
             mid_total_plus = 160
-        print(mid_total)
+            mid_total_minus = 160
+        else:
+            # Иначе используем введённое пользователем значение
+            displayed_mid_total = original_mid_total
 
-        total25MAXo = to25_open + to25_open_plus
-        total25MINo = to25_open - to25_open_minus
-        total25MAXc = to25_close + to25_close_plus
-        total25MINc = to25_close - to25_close_minus
-        win1OpenMAX = win_home_open + win_home_open_plus
-        win1OpenMIN = win_home_open - win_home_open_minus
-        win1CloseMAX = win_home_close + win_home_close_plus
-        win1CloseMIN = win_home_close - win_home_close_minus
-        totalValuePlus = mid_total + mid_total_plus
-        totalValueMinus = mid_total - mid_total_minus
 
-        print(totalValuePlus, totalValueMinus)
-        # Проверка на ошибки
-        if None in [win_home_open, win_home_open_plus, win_home_open_minus, win_home_close, win_home_close_plus,
-                    win_home_close_minus, to25_open, to25_open_plus, to25_open_minus, to25_close, to25_close_plus,
-                    to25_close_minus]:
+        teams = [t for t in (team1, team2) if t]
+        table_html, meta = streak_table_html_bb(teams, DB_URI, td_green,
+                                                link_endpoint="basketball_details", tot_threshold=displayed_mid_total)
+        STREAK_BB_CACHE.clear();
+        STREAK_BB_CACHE.update(meta)
+
+        # Подготавливаем переменные для фильтра
+        totalValuePlus = displayed_mid_total + mid_total_plus
+        totalValueMinus = displayed_mid_total - mid_total_minus
+
+        # Проверка на ошибки int/float
+        if None in [
+            win_home_open, win_home_open_plus, win_home_open_minus,
+            win_home_close, win_home_close_plus, win_home_close_minus,
+            to25_open, to25_open_plus, to25_open_minus,
+            to25_close, to25_close_plus, to25_close_minus
+        ]:
             errors.append("Values must be INTEGER or FLOAT")
 
-        # Данные, если ошибок нет
+        # Формируем словарь для передачи в шаблон
         data = {
             "team1": team1,
             "team2": team2,
@@ -1810,7 +2589,7 @@ def basketball():
             "win_home_close": win_home_close,
             "win_home_close_plus": win_home_close_plus,
             "win_home_close_minus": win_home_close_minus,
-            "mid_total": mid_total,
+            "mid_total": displayed_mid_total,
             "mid_total_plus": mid_total_plus,
             "mid_total_minus": mid_total_minus,
             "to25_open": to25_open,
@@ -1822,14 +2601,17 @@ def basketball():
             "bookmaker": selected_bookmaker,
             "from_date": from_date
         }
-        print("Полученные данные:", data)  # Вывод данных в терминал
+        print("Полученные данные:", data)
+
+        # Определяем источник данных
         if selected_bookmaker == 'Bet365':
             book_source = Bet365OddsBb
             sub_source = BasketballMain.bet365_odds_bb
-        if selected_bookmaker == '1XBet':
+        elif selected_bookmaker == '1XBet':
             book_source = XbetOddsBb
             sub_source = BasketballMain.xbet_odds_bb
 
+        # Пробуем преобразовать счёт
         try:
             team1_score = int(team1_score) if team1_score else None
             opponent_score = int(opponent_score) if opponent_score else None
@@ -1838,15 +2620,17 @@ def basketball():
         except ValueError:
             team1_score = opponent_score = team2_score = opponent2_score = None
 
-        print(team1_score, opponent_score, team2_score, opponent2_score)
-
-        # Базовый запрос
+        # Начинаем формировать запрос
         query = session.query(BasketballMain).join(
             book_source, BasketballMain.match_id == book_source.match_id
         ).options(joinedload(sub_source))
 
-        query = query.filter(BasketballMain.match_date >= from_date,BasketballMain.match_date <= datetime.now())
+        query = query.filter(
+            BasketballMain.match_date >= from_date,
+            BasketballMain.match_date <= datetime.now()
+        )
 
+        # Проверка: хотя бы одна команда
         if not team1 and not team2:
             errors.append("Please select at least one team for filtering!")
             return render_template(
@@ -1876,15 +2660,19 @@ def basketball():
                 or_(BasketballMain.team_home == team2, BasketballMain.team_away == team2)
             )
 
-        # Фильтр по odds_2_5_open
+        # odds_2_5_open
         if to25_open != 0:
+            total25MAXo = to25_open + to25_open_plus
+            total25MINo = to25_open - to25_open_minus
             query = query.filter(
                 book_source.odds_5_5_open >= total25MINo,
                 book_source.odds_5_5_open <= total25MAXo
             )
 
-        # Фильтр по odds_2_5_close
+        # odds_2_5_close
         if to25_close != 0:
+            total25MAXc = to25_close + to25_close_plus
+            total25MINc = to25_close - to25_close_minus
             query = query.filter(
                 book_source.odds_5_5_close >= total25MINc,
                 book_source.odds_5_5_close <= total25MAXc
@@ -1892,6 +2680,8 @@ def basketball():
 
         # Фильтр по win1_open
         if win_home_open != 0:
+            win1OpenMAX = win_home_open + win_home_open_plus
+            win1OpenMIN = win_home_open - win_home_open_minus
             query = query.filter(
                 or_(
                     # Для первой команды как хозяина
@@ -1908,8 +2698,11 @@ def basketball():
                     )
                 )
             )
+
         # Фильтр по win1_close
         if win_home_close != 0:
+            win1CloseMAX = win_home_close + win_home_close_plus
+            win1CloseMIN = win_home_close - win_home_close_minus
             query = query.filter(
                 or_(
                     # Для первой команды как хозяина
@@ -1927,7 +2720,9 @@ def basketball():
                 )
             )
 
-        if mid_total != 0:
+        # Фильтр по total_value только если пользователь ввёл ненулевое значение
+        # (original_mid_total != 0)
+        if original_mid_total != 0:
             query = query.filter(
                 book_source.total_value >= totalValueMinus,
                 book_source.total_value <= totalValuePlus
@@ -1935,8 +2730,6 @@ def basketball():
 
         query = query.order_by(BasketballMain.league_name, desc(BasketballMain.match_date))
         matches = query.all()
-
-        match_ids = [match.match_id for match in matches]
 
         def filter_team_matches(team, score, opponent_score):
             all_team_matches = [match for match in matches if match.team_home == team or match.team_away == team]
@@ -1946,8 +2739,9 @@ def basketball():
                 old_matches = [
                     m for m in all_team_matches_sorted
                     if (
-                            (m.team_home == team and m.home_score_ft == score and m.away_score_ft == opponent_score) or
-                            (m.team_away == team and m.away_score_ft == score and m.home_score_ft == opponent_score)
+                        (m.team_home == team and m.home_score_ft == score and m.away_score_ft == opponent_score)
+                        or
+                        (m.team_away == team and m.away_score_ft == score and m.home_score_ft == opponent_score)
                     )
                 ]
 
@@ -1955,7 +2749,8 @@ def basketball():
                 for old_match in old_matches:
                     future_matches_same_league = [
                         x for x in all_team_matches_sorted
-                        if x.match_date > old_match.match_date and x.league_name == old_match.league_name
+                        if x.match_date > old_match.match_date
+                           and x.league_name == old_match.league_name
                     ]
                     if future_matches_same_league:
                         next_matches.append(future_matches_same_league[0])
@@ -1964,23 +2759,195 @@ def basketball():
             else:
                 return all_team_matches_sorted
 
+        # Фильтрация для team1
         if team1:
             if team1_score is not None and opponent_score is not None:
                 matches_team1 = filter_team_matches(team1, team1_score, opponent_score)
             else:
-                matches_team1 = [match for match in matches if match.team_home == team1 or match.team_away == team1]
-            goasl_main1 = calculate_goals_statistics_bb(matches_team1, mid_total, selected_bookmaker)
+                matches_team1 = [m for m in matches if m.team_home == team1 or m.team_away == team1]
+            goasl_main1 = calculate_goals_statistics_bb(matches_team1, displayed_mid_total, selected_bookmaker)
             hc_team1 = calculate_handicap_statistics_bb(matches_team1, team1, selected_bookmaker)
+        else:
+            matches_team1 = None
+            goasl_main1 = None
+            hc_team1 = None
 
+        # Фильтрация для team2
         if team2:
             if team2_score is not None and opponent2_score is not None:
                 matches_team2 = filter_team_matches(team2, team2_score, opponent2_score)
             else:
-                matches_team2 = [match for match in matches if match.team_home == team2 or match.team_away == team2]
-            goasl_main2 = calculate_goals_statistics_bb(matches_team2, mid_total, selected_bookmaker)
+                matches_team2 = [m for m in matches if m.team_home == team2 or m.team_away == team2]
+            goasl_main2 = calculate_goals_statistics_bb(matches_team2, displayed_mid_total, selected_bookmaker)
             hc_team2 = calculate_handicap_statistics_bb(matches_team2, team2, selected_bookmaker)
+        else:
+            matches_team2 = None
+            goasl_main2 = None
+            hc_team2 = None
 
-        print(mid_total, 'again')
+    else:
+        # GET-запрос, ничего особого не делаем, просто отрисовываем форму
+        matches = None
+        matches_team1 = None
+        matches_team2 = None
+        goasl_main1 = None
+        goasl_main2 = None
+        hc_team1 = None
+        hc_team2 = None
+
+    def analyze_last_n_matches(team, mid_total, limit=10):
+        league_stats = {}
+
+        team_leagues = session.query(BasketballMain.league_name).filter(
+            or_(BasketballMain.team_home == team, BasketballMain.team_away == team)
+        ).distinct().all()
+
+        for league_tuple in team_leagues:
+            league = league_tuple[0]
+
+            recent_matches = session.query(BasketballMain).filter(
+                BasketballMain.league_name == league,
+                or_(
+                    BasketballMain.team_home == team,
+                    BasketballMain.team_away == team
+                )
+            ).order_by(desc(BasketballMain.match_date)).limit(limit).all()
+
+            if not recent_matches:
+                continue
+
+            total_goals = sum(match.home_score_ft + match.away_score_ft for match in recent_matches)
+            over_total = sum(1 for match in recent_matches if (match.home_score_ft + match.away_score_ft) > mid_total)
+            under_equal_total = len(recent_matches) - over_total
+
+            league_stats[league] = {
+                "average_total_points": round(total_goals / len(recent_matches), 2),
+                "over_mid_total": over_total,
+                "under_equal_mid_total": under_equal_total,
+                "total_games": len(recent_matches)
+            }
+
+        return league_stats
+
+
+
+
+    def analyze_last_n_h2h_matches(team1, team2, mid_total, limit=10):
+        league_stats = {}
+
+        leagues = session.query(BasketballMain.league_name).filter(
+            or_(
+                and_(BasketballMain.team_home == team1, BasketballMain.team_away == team2),
+                and_(BasketballMain.team_home == team2, BasketballMain.team_away == team1)
+            )
+        ).distinct().all()
+
+        for league_tuple in leagues:
+            league = league_tuple[0]
+
+            recent_matches = session.query(BasketballMain).filter(
+                BasketballMain.league_name == league,
+                or_(
+                    and_(BasketballMain.team_home == team1, BasketballMain.team_away == team2),
+                    and_(BasketballMain.team_home == team2, BasketballMain.team_away == team1)
+                )
+            ).order_by(desc(BasketballMain.match_date)).limit(limit).all()
+
+            if not recent_matches:
+                continue
+
+            total_goals = sum(match.home_score_ft + match.away_score_ft for match in recent_matches)
+            over_total = sum(1 for match in recent_matches if (match.home_score_ft + match.away_score_ft) > mid_total)
+            under_equal_total = len(recent_matches) - over_total
+
+            league_stats[league] = {
+                "average_total_points": round(total_goals / len(recent_matches), 2),
+                "over_mid_total": over_total,
+                "under_equal_mid_total": under_equal_total,
+                "total_games": len(recent_matches)
+            }
+
+        return league_stats
+
+    # Вызов функции:
+    # Последние 10 и 5 матчей отдельно по командам
+    stats_team1_last_10 = analyze_last_n_matches(team1, displayed_mid_total, limit=10) if team1 else None
+    stats_team1_last_5 = analyze_last_n_matches(team1, displayed_mid_total, limit=5) if team1 else None
+
+    stats_team2_last_10 = analyze_last_n_matches(team2, displayed_mid_total, limit=10) if team2 else None
+    stats_team2_last_5 = analyze_last_n_matches(team2, displayed_mid_total, limit=5) if team2 else None
+
+    # Последние 10 и 5 личных встреч команд между собой
+    stats_h2h_last_10 = analyze_last_n_h2h_matches(team1, team2, displayed_mid_total,
+                                                   limit=10) if team1 and team2 else None
+    stats_h2h_last_5 = analyze_last_n_h2h_matches(team1, team2, displayed_mid_total,
+                                                  limit=5) if team1 and team2 else None
+
+
+    print(stats_team1_last_10)
+    print(stats_team1_last_5)
+    print(stats_team2_last_10 )
+    print(stats_team2_last_5)
+    print(stats_h2h_last_10)
+    print(stats_h2h_last_5)
+    print(goasl_main1)
+    print(goasl_main2)
+
+    def calculate_over_under_prediction(
+            stats_team1_10, stats_team1_5,
+            stats_team2_10, stats_team2_5,
+            h2h_stats_10, h2h_stats_5,
+            goals_stats1, goals_stats2
+    ):
+        leagues = set(stats_team1_10.keys()) | set(stats_team1_5.keys()) | \
+                  set(stats_team2_10.keys()) | set(stats_team2_5.keys()) | \
+                  set(h2h_stats_10.keys()) | set(h2h_stats_5.keys())
+
+        predictions = {}
+
+        for league in leagues:
+            total_over = 0
+            total_games = 0
+
+            for stats in [stats_team1_10, stats_team1_5, stats_team2_10, stats_team2_5, h2h_stats_10, h2h_stats_5]:
+                if league in stats:
+                    total_over += stats[league]['over_mid_total']
+                    total_games += stats[league]['total_games']
+
+            # добавляем данные goals_main1 (over_5_5)
+            if league in goals_stats1:
+                total_over += goals_stats1[league]['over_5_5']
+                total_games += goals_stats1[league]['total_matches']
+
+            # добавляем данные goals_main2 (over_5_5)
+            if league in goals_stats2:
+                total_over += goals_stats2[league]['over_5_5']
+                total_games += goals_stats2[league]['total_matches']
+
+            if total_games > 0:
+                percent_over = (total_over / total_games) * 100
+                percent_under = 100 - percent_over
+            else:
+                percent_over = percent_under = None
+
+            predictions[league] = {
+                'percent_over': round(percent_over, 2) if percent_over is not None else '-',
+                'percent_under': round(percent_under, 2) if percent_under is not None else '-'
+            }
+
+        return predictions
+
+    if request.method == "POST":
+        predictions = calculate_over_under_prediction(
+            stats_team1_last_10, stats_team1_last_5,
+            stats_team2_last_10, stats_team2_last_5,
+            stats_h2h_last_10, stats_h2h_last_5,
+            goasl_main1, goasl_main2
+        )
+    else:
+        predictions= {}
+
+    print(predictions)
 
     return render_template(
         "basketball.html",
@@ -1995,11 +2962,104 @@ def basketball():
         goasl_main2=goasl_main2,
         hc_team1=hc_team1,
         hc_team2=hc_team2,
-        mid_total=int(mid_total),
+        mid_total=int(displayed_mid_total),
         hc_base=hc_base,
         hc_vise=hc_vise,
-        autocomplete=autocomplete
+        autocomplete=autocomplete,
+
+        # статистика последних матчей команд отдельно
+        stats_team1_last_10=stats_team1_last_10,
+        stats_team1_last_5=stats_team1_last_5,
+        stats_team2_last_10=stats_team2_last_10,
+        stats_team2_last_5=stats_team2_last_5,
+
+        # статистика личных встреч
+        stats_h2h_last_10=stats_h2h_last_10,
+        stats_h2h_last_5=stats_h2h_last_5,
+        predictions=predictions,
+        streak_table=table_html
     )
+
+@app.route("/basketball/details")
+def basketball_details():
+    import pandas as pd
+
+    team   = request.args.get("team")
+    league = request.args.get("league")
+    tt     = request.args.get("tt", type=float)  # может быть None
+
+    if not team or not league:
+        return redirect(url_for("basketball"))
+
+    # при первом заходе команду ещё нет в кэше
+    if team not in STREAK_BB_CACHE:
+        _, data = streak_table_html_bb(
+            [team], DB_URI, td_green,
+            link_endpoint="basketball_details",
+            tot_threshold=tt,
+        )
+        STREAK_BB_CACHE.update(data)
+
+    meta   = STREAK_BB_CACHE[team]
+    labels = StreakAnalyzerBB(DB_URI, tt).FLAG_NAMES   # все флаги в актуальном порядке
+
+    # ── карточки ──────────────────────────────────────
+    cards = []
+    for flag, short in labels.items():
+        cur = meta[flag]["current"].get(league, 0)
+        mx  = meta[flag]["max"].get(league, 0)
+        dist    = meta[flag]["distribution"].get(league, {})
+        longest = meta[flag]["longest"].get(league, {})
+
+        dist_html = (
+            pd.DataFrame(sorted(dist.items()), columns=["Длина", "Серий"])
+              .to_html(index=False, classes="table table-bordered table-sm table-striped")
+            if dist else ""
+        )
+        long_html = (
+            pd.DataFrame(longest)[["start", "end", "length"]]
+              .rename(columns={"start": "Начало", "end": "Конец", "length": "Длина"})
+              .to_html(index=False, classes="table table-bordered table-sm table-striped")
+            if longest else ""
+        )
+
+        cards.append(
+            f"<div class='col-md-3 mb-4'>"
+            f"<h6 class='text-center'>{short}<br>"
+            f"<small>{cur} / {mx}</small></h6>"
+            f"{dist_html}{long_html}</div>"
+        )
+
+    rows = [
+        "<div class='row'>" + "".join(cards[i:i + 4]) + "</div>"
+        for i in range(0, len(cards), 4)
+    ]
+
+    # ── финальный HTML ───────────────────────────────
+    return f"""<!doctype html>
+<html lang='ru'>
+<head>
+  <meta charset='utf-8'>
+  <title>Series | {team} – {league}</title>
+  <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
+  <style>
+    body{{padding:20px}}
+    table{{font-size:.75rem;white-space:nowrap}}
+    th,td{{text-align:center;vertical-align:middle}}
+    .wrapper{{overflow-x:auto}}
+  </style>
+</head>
+<body>
+  <div class='container-fluid'>
+    <a class='btn btn-sm btn-secondary mb-3' href='{url_for("basketball")}'>&larr; Назад</a>
+    <h3>{team} — {league}</h3>
+    <div class='wrapper'>
+      {"".join(rows)}
+    </div>
+  </div>
+</body>
+</html>"""
+
 
 
 @app.route("/search_basketball_teams", methods=["GET"])
@@ -2466,23 +3526,23 @@ def get_new_matches():
 
 
 if __name__ == "__main__":
-    create_tables()
-
-
-    url_football = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C8%2C39%2C2%2C3%2C6%2C7%2C4%2C5&pn=-1&pv=1&sp=29&tm=0&v=0&locale=en_US&_=1739107865269&withCredentials=true"
-
-
-    football_thread = threading.Thread(target=periodic_check, args=(url_football, False))
-    football_thread.daemon = True
-    football_thread.start()
-
-
-    url_basketball = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C2&pn=-1&pv=1&sp=4&tm=0&v=0&locale=en_US&_=1739192491263&withCredentials=true"
-
-
-    basketball_thread = threading.Thread(target=periodic_check, args=(url_basketball, True))
-    basketball_thread.daemon = True
-    basketball_thread.start()
+    # create_tables()
+    #
+    #
+    # url_football = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C8%2C39%2C2%2C3%2C6%2C7%2C4%2C5&pn=-1&pv=1&sp=29&tm=0&v=0&locale=en_US&_=1739107865269&withCredentials=true"
+    #
+    #
+    # football_thread = threading.Thread(target=periodic_check, args=(url_football, False))
+    # football_thread.daemon = True
+    # football_thread.start()
+    #
+    #
+    # url_basketball = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C2&pn=-1&pv=1&sp=4&tm=0&v=0&locale=en_US&_=1739192491263&withCredentials=true"
+    #
+    #
+    # basketball_thread = threading.Thread(target=periodic_check, args=(url_basketball, True))
+    # basketball_thread.daemon = True
+    # basketball_thread.start()
 
 
     app.run(debug=True,port=80)
