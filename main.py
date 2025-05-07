@@ -3567,4 +3567,4 @@ if __name__ == "__main__":
     basketball_thread.start()
 
 
-    app.run(debug=True,port=80)
+    app.run(threaded=True, debug=True, use_reloader=False, port=80)
