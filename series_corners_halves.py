@@ -23,8 +23,8 @@ from markupsafe import Markup
 # ─────────────────────────────────────────────
 TABLE_HEADERS: List[str] = [
     'team','league','W','L','W/D','D/L',
-    'TC<7.5','TC<8.5','TC<9.5','TC<10.5',
-    'TC>7.5','TC>8.5','TC>9.5','TC>10.5'
+    'TC>7.5','TC>8.5','TC>9.5','TC>10.5',
+    'TC<7.5','TC<8.5','TC<9.5','TC<10.5'
 ]
 
 class CornersAnalyzer:

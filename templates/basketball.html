@@ -287,6 +287,7 @@ th {
         </div>
     </form>
 <hr>
+{% if team1 and team2 %}
 <div class="predictions-container">
   {% for league, data in predictions.items() %}
   <div class="league-prediction-card">
@@ -314,6 +315,7 @@ th {
   </div>
   {% endfor %}
 </div>
+{% endif %}
 {{ streak_table }}
 <style>
 .predictions-container {

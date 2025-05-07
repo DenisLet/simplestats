@@ -2009,8 +2009,8 @@ def handball():
 
         query = query.filter(HandballMain.match_date >= from_date, HandballMain.match_date <= datetime.now())
 
-        if not team1 and not team2:
-            errors.append("Please select at least one team for filtering!")
+        if not team1 or not team2:
+            errors.append("Please select both teams for filtering!")
             return render_template(
                 "handball.html",
                 selected_bookmaker=selected_bookmaker,
@@ -2042,15 +2042,15 @@ def handball():
         # Фильтр по odds_2_5_open
         if to25_open != 0:
             query = query.filter(
-                book_source.odds_5_5_open >= total25MINo,
-                book_source.odds_5_5_open <= total25MAXo
+                book_source.total_odds_open >= total25MINo,
+                book_source.total_odds_open <= total25MAXo
             )
 
         # Фильтр по odds_2_5_close
         if to25_close != 0:
             query = query.filter(
-                book_source.odds_5_5_close >= total25MINc,
-                book_source.odds_5_5_close <= total25MAXc
+                book_source.total_odds_close >= total25MINc,
+                book_source.total_odds_close <= total25MAXc
             )
 
         # Фильтр по win1_open
@@ -2631,8 +2631,8 @@ def basketball():
         )
 
         # Проверка: хотя бы одна команда
-        if not team1 and not team2:
-            errors.append("Please select at least one team for filtering!")
+        if not team1 or not team2:
+            errors.append("Please select both teams for filtering!")
             return render_template(
                 "basketball.html",
                 selected_bookmaker=selected_bookmaker,
@@ -2665,8 +2665,8 @@ def basketball():
             total25MAXo = to25_open + to25_open_plus
             total25MINo = to25_open - to25_open_minus
             query = query.filter(
-                book_source.odds_5_5_open >= total25MINo,
-                book_source.odds_5_5_open <= total25MAXo
+                book_source.total_odds_open >= total25MINo,
+                book_source.total_odds_open <= total25MAXo
             )
 
         # odds_2_5_close
@@ -2674,8 +2674,8 @@ def basketball():
             total25MAXc = to25_close + to25_close_plus
             total25MINc = to25_close - to25_close_minus
             query = query.filter(
-                book_source.odds_5_5_close >= total25MINc,
-                book_source.odds_5_5_close <= total25MAXc
+                book_source.total_odds_close >= total25MINc,
+                book_source.total_odds_close <= total25MAXc
             )
 
         # Фильтр по win1_open
@@ -3427,37 +3427,59 @@ def match_exists_in_any_scan(home_team, away_team, start_time, is_basketball=Fal
 
 
 def fetch_and_process_matches(url, is_first_run=False, is_basketball=False):
-    """Запрашивает матчи и отправляет их в нужные таблицы"""
+    """
+    Запрашивает матчи и сохраняет их.
+    Поддерживает оба формата ответа Pinnacle («старый» массив‑массивов и
+    май‑2025 объектную схему).
+    """
     data = safe_request(url)
     if not data:
         return
+
     print(f"New request {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    n_data = data.get("n", [])
-    skiped_29andSoccer = n_data[0][2]
 
-    for item in skiped_29andSoccer:
-            league = item[1]
-            matches = item[2]
+    # ── обходим data["n"] (список видов спорта) ───────────────────────────
+    for sport in data.get("n", []):
+        leagues = sport[2] if isinstance(sport, list) else sport.get("l", [])
+        for lg in leagues:
+            league_name = lg[1] if isinstance(lg, list) else lg.get("na")
+            events      = lg[2] if isinstance(lg, list) else lg.get("e", [])
 
-            for match in matches:
-                if match:
-                    home_team = match[1]
-                    away_team = match[2]
-                    start_timestamp = match[4]
-                    start_time = datetime.utcfromtimestamp(start_timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')
-                    found_at = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+            for ev in events:
+                if not ev:
+                    continue
 
+                # разница лишь в индексах / названиях полей
+                if isinstance(ev, list):      # старый формат
+                    home_team, away_team, ts = ev[1], ev[2], ev[4]
+                else:                         # новый формат
+                    home_team = ev.get("t1")
+                    away_team = ev.get("t2")
+                    ts        = ev.get("tm")
 
-                    if is_first_run:
-                        save_match_to_first_scan(league, start_time, home_team, away_team, found_at, is_basketball)
+                start_time = datetime.utcfromtimestamp(ts / 1000)\
+                                     .strftime('%Y-%m-%d %H:%M:%S')
+                found_at   = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
-                    else:
+                if is_first_run:
+                    save_match_to_first_scan(
+                        league_name, start_time, home_team, away_team,
+                        found_at, is_basketball
+                    )
+                else:
+                    if not match_exists_in_any_scan(
+                        home_team, away_team, start_time, is_basketball
+                    ):
+                        save_match_to_new_matches(
+                            league_name, start_time, home_team, away_team,
+                            found_at, is_basketball
+                        )
+                        print(f"New match: {home_team} - {away_team}, "
+                              f"League: {league_name}, Time: {start_time}, "
+                              f"Found at: {found_at}")
+    print(f"First scan table was fulfilled at "
+          f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-                        if not match_exists_in_any_scan(home_team, away_team, start_time, is_basketball):
-                            save_match_to_new_matches(league, start_time, home_team, away_team, found_at, is_basketball)
-                            print(
-                                f"New match: {home_team} - {away_team}, League: {league}, Time: {start_time}, Found at: {found_at}")
-    print(f"First scan table was fulfilled at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 
 def periodic_check(url, is_basketball=False):
@@ -3526,23 +3548,23 @@ def get_new_matches():
 
 
 if __name__ == "__main__":
-    # create_tables()
-    #
-    #
-    # url_football = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C8%2C39%2C2%2C3%2C6%2C7%2C4%2C5&pn=-1&pv=1&sp=29&tm=0&v=0&locale=en_US&_=1739107865269&withCredentials=true"
-    #
-    #
-    # football_thread = threading.Thread(target=periodic_check, args=(url_football, False))
-    # football_thread.daemon = True
-    # football_thread.start()
-    #
-    #
-    # url_basketball = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C2&pn=-1&pv=1&sp=4&tm=0&v=0&locale=en_US&_=1739192491263&withCredentials=true"
-    #
-    #
-    # basketball_thread = threading.Thread(target=periodic_check, args=(url_basketball, True))
-    # basketball_thread.daemon = True
-    # basketball_thread.start()
+    create_tables()
+
+
+    url_football = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C8%2C39%2C2%2C3%2C6%2C7%2C4%2C5&pn=-1&pv=1&sp=29&tm=0&v=0&locale=en_US&_=1739107865269&withCredentials=true"
+
+
+    football_thread = threading.Thread(target=periodic_check, args=(url_football, False))
+    football_thread.daemon = True
+    football_thread.start()
+
+
+    url_basketball = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C2&pn=-1&pv=1&sp=4&tm=0&v=0&locale=en_US&_=1739192491263&withCredentials=true"
+
+
+    basketball_thread = threading.Thread(target=periodic_check, args=(url_basketball, True))
+    basketball_thread.daemon = True
+    basketball_thread.start()
 
 
     app.run(debug=True,port=80)
