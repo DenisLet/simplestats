@@ -190,7 +190,6 @@ th {
         <img src="/static/bball.png" alt="Basketball" style="height: 24px; margin-right: 5px;"> BASKETBALL
     </a>
     <a href="/info" style="font-size: 20px; margin-right: 10px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">INFO</a>
-    <a href="/opened_line" style="font-size: 20px; margin-right: 20px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">NEWLINE</a>
 </div>
 </h1>
 
@@ -316,7 +315,24 @@ th {
   {% endfor %}
 </div>
 {% endif %}
+<style>
+@font-face {
+    font-family: 'Arinal';
+    src: url('/static/fonts/Arinal.woff2') format('woff2'),
+         url('/static/fonts/Arinal.woff')  format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Таблица streak‑ов */
+.table.table-bordered.table-sm.mb-4 {
+    font-family: 'Arinal', sans-serif;
+}
+</style>
+{% if team1 and team2 %}
 {{ streak_table }}
+{% endif %}
 <style>
 .predictions-container {
   display: flex;
@@ -397,16 +413,17 @@ document.querySelectorAll('.bar').forEach(bar => {
   bar.style.setProperty('--final-width', bar.style.width);
 
   if(bar.classList.contains('over-bar')) {
-    // Зеленый цвет от светлого (низкий %) к насыщенному (высокий %)
+
     bar.style.background = `linear-gradient(45deg, hsl(120, 60%, ${80 - percent * 0.5}%), hsl(120, 70%, ${60 - percent * 0.3}%))`;
   }
 
   if(bar.classList.contains('under-bar')) {
-    // Красный цвет от светлого (низкий %) к насыщенному (высокий %)
+
     bar.style.background = `linear-gradient(45deg, hsl(0, 70%, ${85 - percent * 0.5}%), hsl(0, 80%, ${60 - percent * 0.3}%))`;
   }
 });
 </script>
+{% if team1 %}
 <table class="summary-stats-table">
     <thead>
         <tr>
@@ -497,9 +514,10 @@ document.querySelectorAll('.bar').forEach(bar => {
         {% endfor %}
     </tbody>
 </table>
+{% endif %}
 <div class="statistics-section">
 
-    <!-- Голы -->
+
     <div class="stat-block">
                 {% if goasl_main1 %}
 

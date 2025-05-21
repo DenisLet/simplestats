@@ -25,11 +25,15 @@ import pandas as pd
 from textwrap import wrap
 from series_corners_halves  import corners_streak_table_html,CornersAnalyzer
 from series_yellow_total import yc_streak_table_html, YellowAnalyzer
-from markupsafe import Markup
 from series_hockey import streak_table_html, td_green, StreakAnalyzerHOC
-from series_handball import streak_table_html_hb as streak_table_hb, td_green as td_green_hb
-from series_basketball import streak_table_html_bb, td_green, StreakAnalyzerBB
-
+from series_handball import (
+    streak_table_html_hb, StreakAnalyzerHB, td_green
+)
+from flask import Flask, request, redirect, url_for
+from series_basketball import (
+    streak_table_html_bb, StreakAnalyzerBB, td_green
+)
+from markupsafe import Markup
 app = Flask(__name__)
 DATABASE_URL = "postgresql+psycopg2://admin:123456er@127.0.0.1:5432/statix"
 engine = create_engine(DATABASE_URL)
@@ -605,7 +609,7 @@ def soccer_details():
         if dist:
             df_dist = pd.DataFrame(
                         sorted(dist.items(), key=lambda x: int(x[0])),
-                        columns=['Длина', 'Серий'])
+                        columns=['Duration', 'Series'])
             dist_html = df_dist.to_html(index=False,
                                         classes="table table-bordered table-sm table-striped")
 
@@ -614,14 +618,14 @@ def soccer_details():
         if longest:
             df_long = (pd.DataFrame(longest)
                        [['start', 'end', 'length']]
-                       .rename(columns={'start':'Начало','end':'Конец','length':'Длина'}))
+                       .rename(columns={'start':'Start','end':'End','length':'Duration'}))
             long_html = df_long.to_html(index=False,
                                         classes="table table-bordered table-sm table-striped")
 
         card = (
             f"<div class='col-md-3 mb-4'>"
             f"<h6 class='text-center'>{short}<br>"
-            f"<small>текущая {cur} / рекорд {mx}</small></h6>"
+            f"<small>current {cur} / record {mx}</small></h6>"
             f"{dist_html}{long_html}</div>"
         )
         cards_html.append(card)
@@ -643,7 +647,7 @@ def soccer_details():
       .wrapper{{overflow-x:auto;}}
     </style></head><body>
     <div class="container-fluid">
-      <a class="btn btn-sm btn-secondary mb-3" href="{back}">← Назад</a>
+      <a class="btn btn-sm btn-secondary mb-3" href="{back}">← Back</a>
       <h3>{team} — {league}</h3>
       <div class="wrapper">{rows}</div>
     </div></body></html>
@@ -682,12 +686,12 @@ def corner_series():
         flags_df = CornersAnalyzer._flags(matches, team)
         full_hist = CornersAnalyzer._hist(flags_df, flag)
         full_hist = full_hist[full_hist.league_name == league]\
-                        .rename(columns={'start':'Начало',
-                                         'end':'Конец',
-                                         'length':'Длина'})
+                        .rename(columns={'start':'Start',
+                                         'end':'End',
+                                         'length':'Duration'})
 
         dist_html = (pd.DataFrame(sorted(dist.items(), key=lambda x: int(x[0])),
-                                  columns=['Длина','Серий'])
+                                  columns=['Duration','Series'])
                      .to_html(index=False,
                               classes="table table-bordered table-sm mb-3")) if dist else ""
 
@@ -703,11 +707,11 @@ def corner_series():
 <style>body{{padding:20px;}} table{{font-size:.8rem;white-space:nowrap;}}</style>
 </head><body>
   <a class="btn btn-sm btn-secondary mb-3"
-     href="{url_for('corner_series', team=team, league=league)}">← Все пороги</a>
+     href="{url_for('corner_series', team=team, league=league)}">← All series</a>
   <h4>{team} — {league}</h4>
-  <h5>{flag_human} <small class="text-muted">(текущая {cur} / рекорд {mx})</small></h5>
+  <h5>{flag_human} <small class="text-muted">(current {cur} / record {mx})</small></h5>
   {dist_html}
-  <h6>Полный список серий</h6>
+  <h6>Full series list</h6>
   <div class="wrapper">{full_html}</div>
 </body></html>"""
 
@@ -720,7 +724,7 @@ def corner_series():
         longest = meta_team[f_key]['longest'].get(league, {})
 
         dist_html = (pd.DataFrame(sorted(dist.items(), key=lambda x: int(x[0])),
-                                  columns=['Длина','Серий'])
+                                  columns=['Duration','Series'])
                      .to_html(index=False,
                               classes="table table-bordered table-sm")) if dist else ""
 
@@ -728,9 +732,9 @@ def corner_series():
         if longest:
             df_long = (pd.DataFrame(longest)
                        [['start','end','length']]
-                       .rename(columns={'start':'Начало',
-                                        'end':'Конец',
-                                        'length':'Длина'}))
+                       .rename(columns={'start':'Start',
+                                        'end':'End',
+                                        'length':'Duration'}))
             long_html = df_long.to_html(index=False,
                                         classes="table table-bordered table-sm")
 
@@ -738,7 +742,7 @@ def corner_series():
         cards.append(
             f"<div class='col-md-3 mb-4'>"
             f"<h6 class='text-center'><a href='{link}'>{short}</a><br>"
-            f"<small>текущая {cur} / рекорд {mx}</small></h6>"
+            f"<small>current {cur} / record {mx}</small></h6>"
             f"{dist_html}{long_html}</div>"
         )
 
@@ -752,7 +756,7 @@ def corner_series():
 <style>body{{padding:20px;}} table{{font-size:.75rem;white-space:nowrap;}}</style>
 </head><body>
   <a class="btn btn-sm btn-secondary mb-3"
-     href="{url_for('soccer')}">← Назад</a>
+     href="{url_for('soccer')}">← Back</a>
   <h3>{team} — {league}</h3>
   <div class="wrapper">{''.join(rows)}</div>
 </body></html>"""
@@ -792,7 +796,7 @@ def yc_series():
         dist_html = ""
         if dist:
             df_dist = pd.DataFrame(sorted(dist.items(), key=lambda x: int(x[0])),
-                                   columns=['Длина','Серий'])
+                                   columns=['Duration','Series'])
             dist_html = df_dist.to_html(index=False,
                                         classes="table table-bordered table-sm mb-3")
 
@@ -802,9 +806,9 @@ def yc_series():
         flags_df    = YellowAnalyzer._flags(all_matches, team)
         full_hist   = YellowAnalyzer._hist(flags_df, flag)
         full_hist   = full_hist[full_hist.league_name == league] \
-                              .rename(columns={'start':'Начало',
-                                               'end':'Конец',
-                                               'length':'Длина'})
+                              .rename(columns={'start':'Start',
+                                               'end':'End',
+                                               'length':'Duration'})
         full_html = full_hist.to_html(index=False,
                                       classes="table table-bordered table-sm table-striped")
 
@@ -815,11 +819,11 @@ def yc_series():
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
         <style>body{{padding:20px;}}table{{font-size:.8rem;white-space:nowrap;}}</style>
         </head><body>
-          <a class="btn btn-sm btn-secondary mb-3" href="{url_for('yc_series',team=team,league=league)}">← Все YC-пороги</a>
+          <a class="btn btn-sm btn-secondary mb-3" href="{url_for('yc_series',team=team,league=league)}">← All series</a>
           <h4>{team} — {league}</h4>
-          <h5>{title} <small class="text-muted">(текущая {cur} / рекорд {mx})</small></h5>
+          <h5>{title} <small class="text-muted">(current {cur} / record {mx})</small></h5>
           {dist_html}
-          <h6>Полный список серий</h6>
+          <h6>Full list</h6>
           <div class="wrapper">{full_html}</div>
         </body></html>
         """
@@ -836,14 +840,14 @@ def yc_series():
         dist_html = ""
         if dist:
             df_dist = pd.DataFrame(sorted(dist.items(), key=lambda x: int(x[0])),
-                                   columns=['Длина','Серий'])
+                                   columns=['Duration','Series'])
             dist_html = df_dist.to_html(index=False,
                                         classes="table table-bordered table-sm table-striped")
         long_html = ""
         if longest:
             df_long = (pd.DataFrame(longest)
                        [['start','end','length']]
-                       .rename(columns={'start':'Начало','end':'Конец','length':'Длина'}))
+                       .rename(columns={'start':'Start','end':'End','length':'Duration'}))
             long_html = df_long.to_html(index=False,
                                         classes="table table-bordered table-sm table-striped")
 
@@ -852,7 +856,7 @@ def yc_series():
         cards.append(
           f"<div class='col-md-3 mb-4'>"
           f"<h6 class='text-center'><a href='{link}'>{short}</a><br>"
-          f"<small>текущая {cur} / рекорд {mx}</small></h6>"
+          f"<small>current {cur} / record {mx}</small></h6>"
           f"{dist_html}{long_html}</div>"
         )
 
@@ -866,7 +870,7 @@ def yc_series():
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>body{{padding:20px;}}table{{font-size:.75rem;white-space:nowrap;}}</style>
     </head><body>
-      <a class="btn btn-sm btn-secondary mb-3" href="{url_for('soccer')}">← Назад</a>
+      <a class="btn btn-sm btn-secondary mb-3" href="{url_for('soccer')}">← Back</a>
       <h3>{team} — {league}</h3>
       <div class="wrapper">{''.join(rows)}</div>
     </body></html>
@@ -1591,7 +1595,7 @@ def hockey_details():
         if dist:
             df_dist = pd.DataFrame(
                 sorted(dist.items(), key=lambda x: int(x[0])),
-                columns=['Длина', 'Серий']
+                columns=['Duration', 'Series']
             )
             dist_html = df_dist.to_html(index=False,
                                         classes="table table-bordered table-sm table-striped")
@@ -1602,7 +1606,7 @@ def hockey_details():
             df_long = (
                 pd.DataFrame(longest)
                   [['start','end','length']]
-                  .rename(columns={'start':'Начало','end':'Конец','length':'Длина'})
+                  .rename(columns={'start':'Start','end':'End','length':'Duration'})
             )
             long_html = df_long.to_html(index=False,
                                         classes="table table-bordered table-sm table-striped")
@@ -1610,7 +1614,7 @@ def hockey_details():
         card = (
             f"<div class='col-md-3 mb-4'>"
             f"<h6 class='text-center'>{short}<br>"
-            f"<small>текущая {cur} / рекорд {mx}</small></h6>"
+            f"<small>current {cur} / record {mx}</small></h6>"
             f"{dist_html}{long_html}</div>"
         )
         cards_html.append(card)
@@ -1635,7 +1639,7 @@ def hockey_details():
     </head>
     <body>
       <div class="container-fluid">
-        <a class="btn btn-sm btn-secondary mb-3" href="{url_for('hockey')}">← Назад</a>
+        <a class="btn btn-sm btn-secondary mb-3" href="{url_for('hockey')}">← Back</a>
         <h3>{team} — {league}</h3>
         <div class="wrapper">{''.join(rows)}</div>
       </div>
@@ -1890,9 +1894,10 @@ def handball():
         mid_total = request.form.get('mid_total', '')
 
         teams = [t for t in (team1, team2) if t]
-        table, meta = streak_table_hb(
-            teams, DB_URI, td_green_hb,
-            link_endpoint="handball_details"  # обязательно совпадает с именем эндпоинта
+        table, meta = streak_table_html_hb(
+            teams, DB_URI, td_green,
+            link_endpoint="handball_details",
+            tot_threshold=int(mid_total)# обязательно совпадает с именем эндпоинта
         )
         HAND_CACHE.clear()
         HAND_CACHE.update(meta)
@@ -2170,66 +2175,99 @@ def handball():
 
 @app.route("/handball/details")
 def handball_details():
+    import pandas as pd
+    from flask import request, redirect, url_for
+
     team   = request.args.get("team", "").strip()
     league = request.args.get("league", "").strip()
+    tt     = request.args.get("tt", type=float)  # может быть None
+
     if not (team and league):
         return redirect(url_for("handball"))
 
-    # если нет в кеше — пересчитаем
-    if team not in HAND_CACHE:
-        _, data = streak_table_html([team], DB_URI, td_green, link_endpoint="handball_details")
-        HAND_CACHE.update(data)
+    # ключ кеша с учётом tot-порога
+    cache_key = (team, tt)
+    if cache_key not in HAND_CACHE:
+        # пересчитываем все флаги, включая TOTAL и хендикапы
+        _, data = streak_table_html_hb(
+            [team], DB_URI, td_green,
+            link_endpoint="handball_details",
+            tot_threshold=tt,
+        )
+        # data: { team: meta }
+        HAND_CACHE[cache_key] = data[team]
 
-    meta = HAND_CACHE[team]
+    meta   = HAND_CACHE[cache_key]
+    # все флаги в правильном порядке
+    labels = StreakAnalyzerHB(DB_URI, tt).FLAG_NAMES
 
-    # точно такую же логику, как в soccer_details/hockey_details:
+    # собираем карточки
     cards = []
-    for flag, short in StreakAnalyzerHB.FLAG_NAMES.items():
-        cur     = meta[flag]['current'].get(league, 0)
-        mx      = meta[flag]['max'].    get(league, 0)
-        dist    = meta[flag]['distribution'].get(league, {})
-        longest = meta[flag]['longest'].   get(league, [])
+    for flag, short in labels.items():
+        cur     = meta[flag]["current"].get(league, 0)
+        mx      = meta[flag]["max"].       get(league, 0)
+        dist    = meta[flag]["distribution"].get(league, {})
+        longest = meta[flag]["longest"].   get(league, [])
 
-        # формируем HTML таблицы распределения и longest
-        dist_html = ""
+        # распределение серий
         if dist:
-            dfd = pd.DataFrame(sorted(dist.items(), key=lambda x: int(x[0])),
-                               columns=['Длина','Серий'])
-            dist_html = dfd.to_html(index=False,
-                                    classes="table table-sm table-bordered table-striped")
+            df_dist = pd.DataFrame(
+                sorted(dist.items(), key=lambda x: int(x[0])),
+                columns=["Duration", "Series"]
+            )
+            dist_html = df_dist.to_html(index=False,
+                                        classes="table table-sm table-bordered table-striped")
+        else:
+            dist_html = ""
 
-        long_html = ""
+        # детали самых длинных
         if longest:
-            dfl = pd.DataFrame(longest)[['start','end','length']] \
-                             .rename(columns={'start':'Начало','end':'Конец','length':'Длина'})
-            long_html = dfl.to_html(index=False,
-                                    classes="table table-sm table-bordered table-striped")
+            df_long = (
+                pd.DataFrame(longest)
+                  .rename(columns={"start":"Start","end":"End","length":"Duration"})
+            )
+            long_html = df_long.to_html(index=False,
+                                        classes="table table-sm table-bordered table-striped")
+        else:
+            long_html = ""
 
         cards.append(
             f"<div class='col-md-3 mb-4'>"
-            f"<h6 class='text-center'>{short}<br><small>тек {cur} / рек {mx}</small></h6>"
-            f"{dist_html}{long_html}</div>"
+            f"<h6 class='text-center'>{short}<br>"
+            f"<small>current {cur} / record {mx}</small></h6>"
+            f"{dist_html}{long_html}"
+            f"</div>"
         )
 
-    rows = []
-    for i in range(0, len(cards), 4):
-        rows.append(f"<div class='row'>{''.join(cards[i:i+4])}</div>")
+    # разбиваем по рядам по 4 карточки
+    rows_html = "".join(
+        "<div class='row'>" + "".join(cards[i:i+4]) + "</div>"
+        for i in range(0, len(cards), 4)
+    )
 
-    html_page = f"""
-    <!doctype html>
-    <html lang="ru"><head><meta charset="utf-8">
-      <title>Handball Series | {team} — {league}</title>
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-      <style>body{{padding:20px}}table{{font-size:.75rem;white-space:nowrap}}th,td{{text-align:center}}</style>
-    </head><body>
-      <div class="container-fluid">
-        <a class="btn btn-sm btn-secondary mb-3" href="{url_for('handball')}">← Назад</a>
-        <h3>{team} — {league}</h3>
-        <div class="wrapper">{''.join(rows)}</div>
-      </div>
-    </body></html>
-    """
-    return html_page
+    # финальный HTML
+    return f"""<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8">
+  <title>Handball Series | {team} — {league}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {{ padding:20px }}
+    table {{ font-size:.75rem; white-space:nowrap }}
+    th,td {{ text-align:center }}
+    .wrapper {{ overflow-x:auto }}
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <a class="btn btn-sm btn-secondary mb-3" href="{url_for('handball')}">&larr; Back</a>
+    <h3>{team} — {league}</h3>
+    <div class="wrapper">
+      {rows_html}
+    </div>
+  </div>
+</body>
+</html>"""
 
 
 @app.route("/search_handball_teams", methods=["GET"])
@@ -2986,24 +3024,26 @@ def basketball_details():
 
     team   = request.args.get("team")
     league = request.args.get("league")
-    tt     = request.args.get("tt", type=float)  # может быть None
+    tt     = request.args.get("tt", type=float)      # None, если не передан
 
     if not team or not league:
         return redirect(url_for("basketball"))
 
-    # при первом заходе команду ещё нет в кэше
-    if team not in STREAK_BB_CACHE:
+    # --- кэш ---------------------------------------------------------
+    cache_key = (team, tt)           # порог тотала входит в ключ!
+    if cache_key not in STREAK_BB_CACHE:
         _, data = streak_table_html_bb(
             [team], DB_URI, td_green,
             link_endpoint="basketball_details",
             tot_threshold=tt,
         )
-        STREAK_BB_CACHE.update(data)
+        STREAK_BB_CACHE[cache_key] = data[team]
 
-    meta   = STREAK_BB_CACHE[team]
+    meta   = STREAK_BB_CACHE[cache_key]
     labels = StreakAnalyzerBB(DB_URI, tt).FLAG_NAMES   # все флаги в актуальном порядке
+    # -----------------------------------------------------------------
 
-    # ── карточки ──────────────────────────────────────
+    # --- карточки ----------------------------------------------------
     cards = []
     for flag, short in labels.items():
         cur = meta[flag]["current"].get(league, 0)
@@ -3012,13 +3052,13 @@ def basketball_details():
         longest = meta[flag]["longest"].get(league, {})
 
         dist_html = (
-            pd.DataFrame(sorted(dist.items()), columns=["Длина", "Серий"])
+            pd.DataFrame(sorted(dist.items()), columns=["Duration", "Series"])
               .to_html(index=False, classes="table table-bordered table-sm table-striped")
             if dist else ""
         )
         long_html = (
             pd.DataFrame(longest)[["start", "end", "length"]]
-              .rename(columns={"start": "Начало", "end": "Конец", "length": "Длина"})
+              .rename(columns={"start": "Start", "end": "End", "length": "Duration"})
               .to_html(index=False, classes="table table-bordered table-sm table-striped")
             if longest else ""
         )
@@ -3034,8 +3074,8 @@ def basketball_details():
         "<div class='row'>" + "".join(cards[i:i + 4]) + "</div>"
         for i in range(0, len(cards), 4)
     ]
+    # -----------------------------------------------------------------
 
-    # ── финальный HTML ───────────────────────────────
     return f"""<!doctype html>
 <html lang='ru'>
 <head>
@@ -3051,8 +3091,8 @@ def basketball_details():
 </head>
 <body>
   <div class='container-fluid'>
-    <a class='btn btn-sm btn-secondary mb-3' href='{url_for("basketball")}'>&larr; Назад</a>
-    <h3>{team} — {league}</h3>
+    <a class='btn btn-sm btn-secondary mb-3' href='{url_for("basketball")}'>&larr; Back</a>
+    <h3>{team} — {league}</h3>
     <div class='wrapper'>
       {"".join(rows)}
     </div>
@@ -3548,23 +3588,23 @@ def get_new_matches():
 
 
 if __name__ == "__main__":
-    create_tables()
-
-
-    url_football = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C8%2C39%2C2%2C3%2C6%2C7%2C4%2C5&pn=-1&pv=1&sp=29&tm=0&v=0&locale=en_US&_=1739107865269&withCredentials=true"
-
-
-    football_thread = threading.Thread(target=periodic_check, args=(url_football, False))
-    football_thread.daemon = True
-    football_thread.start()
-
-
-    url_basketball = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C2&pn=-1&pv=1&sp=4&tm=0&v=0&locale=en_US&_=1739192491263&withCredentials=true"
-
-
-    basketball_thread = threading.Thread(target=periodic_check, args=(url_basketball, True))
-    basketball_thread.daemon = True
-    basketball_thread.start()
+    # create_tables()
+    #
+    #
+    # url_football = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C8%2C39%2C2%2C3%2C6%2C7%2C4%2C5&pn=-1&pv=1&sp=29&tm=0&v=0&locale=en_US&_=1739107865269&withCredentials=true"
+    #
+    #
+    # football_thread = threading.Thread(target=periodic_check, args=(url_football, False))
+    # football_thread.daemon = True
+    # football_thread.start()
+    #
+    #
+    # url_basketball = "https://www.pin880.com/sports-service/sv/compact/events?btg=1&c=&cl=3&d=&ec=&ev=&g=&hle=true&ic=false&inl=false&l=3&lang=&lg=&lv=&me=0&mk=0&more=false&o=1&ot=1&pa=0&pimo=0%2C1%2C2&pn=-1&pv=1&sp=4&tm=0&v=0&locale=en_US&_=1739192491263&withCredentials=true"
+    #
+    #
+    # basketball_thread = threading.Thread(target=periodic_check, args=(url_basketball, True))
+    # basketball_thread.daemon = True
+    # basketball_thread.start()
 
 
     app.run(threaded=True, debug=True, use_reloader=False, port=80)

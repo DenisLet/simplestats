@@ -189,7 +189,7 @@ th {
         <img src="/static/bball.png" alt="Basketball" style="height: 24px; margin-right: 5px;"> BASKETBALL
     </a>
     <a href="/info" style="font-size: 20px; margin-right: 10px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">INFO</a>
-    <a href="/opened_line" style="font-size: 20px; margin-right: 20px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">NEWLINE</a>
+
 </div>
 
 
@@ -314,8 +314,9 @@ th {
         {{ streak_table }}
       </div>
     {% else %}
-      <p>Нет данных для построения серии.</p>
+      <p>Enter teams to get series.</p>
     {% endif %}
+{% if team1 %}
 <table class="summary-stats-table">
   <thead>
     <tr>
@@ -405,6 +406,7 @@ th {
     {% endfor %}
   </tbody>
 </table>
+{% endif %}
 <div class="statistics-section">
 
     <!-- Голы -->

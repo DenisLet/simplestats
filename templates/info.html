@@ -157,6 +157,31 @@ th {
         justify-content: space-between;
     }
 }
+  @keyframes shimmer-red {
+    0%, 100% { color: #ff4d4d; }
+    50%    { color: #ff0000; }
+  }
+
+  .desktop-warning {
+    display: none;                   /* hidden on desktop */
+    position: absolute;
+    top: 100%;                       /* right below the discuss link */
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    padding: 4px 8px;
+    z-index: 1000;
+    animation: shimmer-red 1.5s ease-in-out infinite;
+  }
+
+  /* show only on small screens */
+  @media (max-width: 768px) {
+    .desktop-warning {
+      display: block;
+    }
+  }
 
     </style>
 </head>
@@ -178,7 +203,7 @@ th {
         <img src="/static/bball.png" alt="Basketball" style="height: 24px; margin-right: 5px;"> BASKETBALL
     </a>
     <a href="/info" style="font-size: 20px; margin-right: 10px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">INFO</a>
-    <a href="/opened_line" style="font-size: 20px; margin-right: 20px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">NEWLINE</a>
+
 </div>
 
 </h1>
@@ -187,13 +212,14 @@ th {
 
 <h2 style="text-align: center; margin-top: 20px;">HOW TO USE IT</h2>
 
-<div style="display: flex; align-items: center; justify-content: center; margin-top: 20px;">
-    <li style="display: flex; align-items: center;">
-        <img class="small-icon" src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" alt="Telegram Chat Icon">
-        <a href="https://t.me/+mrbNPOdDHeg5Njdk" target="_blank">discuss</a>
-    </li>
+<div class="discuss-container" style="display: flex; align-items: center; justify-content: center; margin-top: 20px; position: relative;">
+  <li style="display: flex; align-items: center;">
+    <img class="small-icon" src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" alt="Telegram Chat Icon">
+    <a href="https://t.me/+mrbNPOdDHeg5Njdk" target="_blank">DISCUSS</a>
+  </li>
+  <div class="desktop-warning">Please use the desktop version!</div>
 </div>
-
+<div class="desktop-warning">Please use the desktop version!</div>
 <style>
     .small-icon {
         width: 30px;

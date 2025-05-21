@@ -190,7 +190,6 @@ th {
         <img src="/static/bball.png" alt="Basketball" style="height: 24px; margin-right: 5px;"> BASKETBALL
     </a>
     <a href="/info" style="font-size: 20px; margin-right: 10px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">INFO</a>
-    <a href="/opened_line" style="font-size: 20px; margin-right: 20px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">NEWLINE</a>
 </div>
 </h1>
 
@@ -286,8 +285,24 @@ th {
         </div>
     </form>
 <hr>
+<style>
+@font-face {
+    font-family: 'Arinal';
+    src: url('/static/fonts/Arinal.woff2') format('woff2'),
+         url('/static/fonts/Arinal.woff')  format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
 
+/* Таблица streak‑ов */
+.table.table-bordered.table-sm.mb-4 {
+    font-family: 'Arinal', sans-serif;
+}
+</style>
+{% if team1 and team2 %}
     {{ streak_table }}
+{% endif %}
 <div class="statistics-section">
 
     <!-- Голы -->

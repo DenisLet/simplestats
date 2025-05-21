@@ -13,6 +13,7 @@
     <link rel="icon" href="{{ url_for('static', filename='icon_red.png') }}" type="image/png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Simplestats</title>
     <style>
         @font-face {
@@ -185,7 +186,7 @@ th {
         <img src="/static/bball.png" alt="Basketball" style="height: 24px; margin-right: 5px;"> BASKETBALL
     </a>
     <a href="/info" style="font-size: 20px; margin-right: 10px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">INFO</a>
-    <a href="/opened_line" style="font-size: 20px; margin-right: 20px; text-decoration: none; color: black;" onmouseover="this.style.color='red'" onmouseout="this.style.color='black'">NEWLINE</a>
+
 </div>
 
 
@@ -416,18 +417,18 @@ document.querySelectorAll('.bar').forEach(bar => {
   bar.style.setProperty('--final-width', bar.style.width);
 
   if(bar.classList.contains('over-bar')) {
-    // динамический градиент от светлого к насыщенному зелёному
+
     bar.style.background = `linear-gradient(45deg, hsl(120, 60%, ${80 - percent * 0.5}%), hsl(120, 70%, ${60 - percent * 0.3}%))`;
   }
 
   if(bar.classList.contains('under-bar')) {
-    // динамический градиент от светло-красного к насыщенному
+
     bar.style.background = `linear-gradient(45deg, hsl(0, 70%, ${85 - percent * 0.5}%), hsl(0, 80%, ${60 - percent * 0.3}%))`;
   }
 });
 </script>
 <style>
-  /* Чтобы переключатель всегда был по центру */
+
   #switcher {
     display: flex;
     justify-content: center;
@@ -453,7 +454,7 @@ document.querySelectorAll('.bar').forEach(bar => {
 <div id="tableContainer"></div>
 
 <script>
-// Собираем «слайды»
+
 const tabs = [
   { label: "Results",      html: {{ streak_table|tojson }} },
   { label: "Corners",      html: {{ corners_table|tojson }} },
@@ -469,7 +470,7 @@ function renderTab() {
   container.innerHTML = tabs[current].html;
 }
 
-// Цикличная навигация
+
 document.getElementById('prevBtn').addEventListener('click', () => {
   current = (current - 1 + tabs.length) % tabs.length;
   renderTab();
@@ -479,9 +480,9 @@ document.getElementById('nextBtn').addEventListener('click', () => {
   renderTab();
 });
 
-// Инициализация
 renderTab();
 </script>
+{% if team1 %}
 <table class="summary-stats-table">
     <thead>
         <tr>
@@ -572,6 +573,7 @@ renderTab();
         {% endfor %}
     </tbody>
 </table>
+{% endif %}
 <div class="statistics-section">
 
     <!-- Голы -->
